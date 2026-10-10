@@ -54,6 +54,10 @@ the replacement. Save open source files first. The app's containing folder must
 be writable by your user; project and workspace data are not replaced. The first
 installation of a build containing Customize must use the ordinary package
 installation path, since an older app has no in-app updater.
+When reconnecting after an app update, a systemd-managed workspace service
+switches to the UI and server bundled with the new app; the workspace state stays
+in its existing folder. The connection shows an error if an older detached
+service needs a manual restart.
 
 Use a page tab’s **⋯** menu or right-click → **Remove page**. Each block’s handle/menu offers **Remove block**, including outside Rearrange. Source files, notes, results and running work are kept. Utility/Markdown tabs can be restored from the page menu; removed blocks can be added again through Rearrange. Drag Results report tabs to reorder; their menu removes a report into the recoverable **Removed** list.
 

@@ -1,6 +1,9 @@
 name: Build Mac bootstrap app
 
 on:
+  push:
+    branches: [main]
+    paths: [desktop/bootstrap.py]
   workflow_dispatch:
 
 permissions:

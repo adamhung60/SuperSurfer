@@ -1,5 +1,6 @@
 """Installer control-flow tests; no real SSH, user service or process is started."""
 import errno
+import hashlib
 import importlib.util
 import io
 import json
@@ -85,6 +86,45 @@ class InstallerTests(unittest.TestCase):
         self.assertFalse(commands.called)
         self.assertEqual(len(self.calls), 1)
         self.assertEqual(self.calls[0][0].get_header("Authorization"), "Bearer " + self.token)
+
+    def existing_systemd_release(self):
+        self.state.mkdir(parents=True)
+        (self.state / "token").write_text(self.token)
+        previous = self.root / "releases" / "previous"
+        previous.mkdir(parents=True)
+        (self.state / "release.json").write_text(json.dumps({"path": str(previous), "mode": "systemd"}))
+        unit_name = "supersurfer-" + hashlib.sha256(str(self.root).encode()).hexdigest()[:10] + ".service"
+        (self.state / "unit").write_text(unit_name)
+        unit_file = self.home / ".config/systemd/user" / unit_name
+        unit_file.parent.mkdir(parents=True)
+        unit_file.write_text("[Service]\nWorkingDirectory=" + str(previous) + "\n")
+        return previous, unit_file
+
+    def test_reconnect_switches_existing_systemd_service_to_uploaded_release(self):
+        previous, unit_file = self.existing_systemd_release()
+        result, spawned, commands = self.install(systemd=True, run=lambda command, **kwargs: subprocess.CompletedProcess(command, 0))
+        self.assertEqual(result["token"], self.token)
+        self.assertFalse(spawned.called)
+        release = json.loads((self.state / "release.json").read_text())["path"]
+        self.assertNotEqual(release, str(previous))
+        self.assertIn("WorkingDirectory=" + release + "\n", unit_file.read_text())
+        self.assertEqual([call.args[0][2] for call in commands.call_args_list], ["daemon-reload", "restart"])
+
+    def test_failed_systemd_upgrade_restores_previous_service(self):
+        previous, unit_file = self.existing_systemd_release()
+        restarts = 0
+        def run(command, **kwargs):
+            nonlocal restarts
+            if "restart" in command:
+                restarts += 1
+                if restarts == 1:
+                    return subprocess.CompletedProcess(command, 1, stderr=b"new service failed")
+            return subprocess.CompletedProcess(command, 0)
+        with self.assertRaisesRegex(RuntimeError, "previous service was restored"):
+            self.install(systemd=True, run=run)
+        self.assertEqual(restarts, 2)
+        self.assertIn("WorkingDirectory=" + str(previous) + "\n", unit_file.read_text())
+        self.assertEqual(json.loads((self.state / "release.json").read_text())["path"], str(previous))
 
     def test_connection_initializes_manager_even_when_sidecar_was_already_running(self):
         self.state.mkdir(parents=True)

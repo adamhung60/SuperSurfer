@@ -53,6 +53,47 @@ def progress(message):
     print('SUPERSURFER_PROGRESS: ' + json.dumps({'message':message}),file=sys.stderr,flush=True)
 
 
+def upgrade_systemd_release(root, state, previous, release, healthy):
+    """Switch an owned user service to the uploaded release, restoring it on failure."""
+    unit_name = 'supersurfer-' + hashlib.sha256(str(root).encode()).hexdigest()[:10] + '.service'
+    if (state / 'unit').read_text().strip() != unit_name:
+        raise RuntimeError('The running workspace service does not match this installation. Reconnect using its original workspace folder.')
+    unit_file = Path.home() / '.config/systemd/user' / unit_name
+    original = unit_file.read_text()
+    old_line = 'WorkingDirectory=' + str(previous).replace('%', '%%') + '\n'
+    new_line = 'WorkingDirectory=' + str(release).replace('%', '%%') + '\n'
+    if old_line not in original or original.count(old_line) != 1:
+        raise RuntimeError('The workspace service configuration no longer matches its recorded release. No service was changed.')
+
+    def write_unit(content):
+        temporary = unit_file.with_name(unit_file.name + '.tmp')
+        temporary.write_text(content)
+        temporary.replace(unit_file)
+
+    def wait_ready():
+        for _ in range(40):
+            if healthy():
+                return
+            time.sleep(.5)
+        raise RuntimeError('The updated workspace service did not become ready.')
+
+    progress('Updating the workspace service to the new app version…')
+    try:
+        write_unit(original.replace(old_line, new_line, 1))
+        systemctl_checked(['daemon-reload'], timeout=15)
+        systemctl_checked(['restart', unit_name], timeout=25)
+        wait_ready()
+    except Exception as error:
+        try:
+            write_unit(original)
+            systemctl_checked(['daemon-reload'], timeout=15)
+            systemctl_checked(['restart', unit_name], timeout=25)
+            wait_ready()
+        except Exception as recovery:
+            raise RuntimeError(f'Workspace update failed: {error}. Restoring the previous service also failed: {recovery}') from error
+        raise RuntimeError(f'Workspace update failed; the previous service was restored: {error}') from error
+
+
 def read_bundle(expected=None, timeout=30, stream=None):
     """Read a framed upload before taking any workspace/service lock.
 
@@ -156,6 +197,17 @@ def _install(payload):
     if not session_info.get('read_only'):
         progress('Checking the remote research manager…')
         ensure_manager(release, aml_home)
+    if token and (state / 'release.json').is_file():
+        installed = json.loads((state / 'release.json').read_text())
+        previous = Path(installed.get('path', ''))
+        if previous.resolve() != release.resolve():
+            if installed.get('mode') != 'systemd':
+                raise RuntimeError('A new workspace version was uploaded, but this workspace uses a detached service. Stop that service and reconnect to apply the new version.')
+            upgrade_systemd_release(root, state, previous, release, healthy)
+            installed['path'] = str(release)
+            (state / 'release.json').write_text(json.dumps(installed))
+            session_info.clear()
+            token = healthy()
     if not token:
         progress('Starting the workspace service…')
         command = [sys.executable, '-m', 'server.app', '--state-dir', str(state), '--port', str(port), '--aml-home', str(Path(config.get('amlHome') or '~/.auto-ml').expanduser())]
