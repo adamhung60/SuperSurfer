@@ -934,3 +934,5 @@ feature is not installed in the user's current Mac app.
 Diagnostics: not applicable — requested presentation and local signing improvements, not a live workspace failure.
 
 The final package excludes `.SuperSurfer` workspace data; native package regression checks assert its absence in both original and extracted apps.
+
+Final integrated source checkout: clean Mac arm64 package succeeded. The original and ZIP-extracted apps both passed the updated native regression, including absence of `.SuperSurfer`. Delivered `ui/app.js`, `ui/styles.css`, signing module, setup helper and packaging script match the current source byte-for-byte. Draft PR: https://github.com/adamhung60/SuperSurfer/pull/6 (diagnostic-report check passed). No installation/restart performed.
