@@ -1,0 +1,50 @@
+name: Build Mac bootstrap app
+
+on:
+  # Build once when this workflow is added; allow an owner to rebuild later.
+  push:
+    branches: [main]
+    paths: [.github/workflows/mac-bootstrap.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mac-app:
+    name: Mac app (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-latest
+          - arch: x64
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Package and sign Mac app
+        env:
+          SUPERSURFER_ARCH: ${{ matrix.arch }}
+        run: npm run package:mac
+      - name: Verify bundled and ZIP-extracted app
+        env:
+          SUPERSURFER_ARCH: ${{ matrix.arch }}
+        run: node tests/mac-package.electron.cjs
+      - name: Upload verified app archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: SuperSurfer-mac-${{ matrix.arch }}
+          path: dist/SuperSurfer-*-mac-${{ matrix.arch }}.zip
+          if-no-files-found: error
+          retention-days: 14
