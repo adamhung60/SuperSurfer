@@ -422,3 +422,5 @@ Ongoing list of requested improvements. Unchecked items are planned, not impleme
 are complete; keep native macOS launch/Gatekeeper as the remaining packaging check.
 Cursor ACP does not expose usage receipts, and listed model IDs may be plan-restricted.
 Native multi-select questions currently direct the agent to scoped ask_user.
+
+Completed: expose SSH workspace setup from Add project, remove its goal input, and adopt YOLO as the persistent workspace permission default while preserving explicit chat overrides and later workspace choices.

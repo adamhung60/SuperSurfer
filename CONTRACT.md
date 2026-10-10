@@ -687,7 +687,7 @@ Deliverables are collapsed on first display and conversation changes; an explici
 
 Scopes are `manager`, `project:<id>`, `experiment:<id>`, `conversation:<uuid>`, and historical `agent:<id>`. New conversation scopes are resolved through their durable experiment registry; callers cannot change that membership. The first four are SuperSurfer-owned threads. Retired `agent:` scopes expose bounded read-only history and never resume a native thread in a second process. Native model overrides, structured answers, steering and approval decisions are not supplied through SuperSurfer-owned runtime controls.
 
-`GET /api/chat?scope=...` returns messages, activity, busy/error state, agent metadata, `steerable`, approvals, questions and preferences. Preferences contain role defaults, independent model/effort overrides, effective values, supported reasoning and editability. Resolved defaults reflect Codex configuration when a role model is unset. `fast_mode` defaults to false; an unset chat approval preference inherits the workspace `approval_mode`, initially `ask`. Native values that are not reported remain null.
+`GET /api/chat?scope=...` returns messages, activity, busy/error state, agent metadata, `steerable`, approvals, questions and preferences. Preferences contain role defaults, independent model/effort overrides, effective values, supported reasoning and editability. Resolved defaults reflect Codex configuration when a role model is unset. `fast_mode` defaults to false; an unset chat approval preference inherits the workspace `approval_mode`, initially `yolo`. Native values that are not reported remain null.
 
 `POST /api/action` takes `{op,params}`:
 
@@ -898,3 +898,5 @@ provider-native rules; permitted workspace edits may run without a callback. CLI
 recognized events; raw stdout/stderr and auth output are not logged. Restart and
 unknown delivery never replay prompts. Exact-turn steering and complete patch
 attribution are not advertised for Cursor/Claude.
+
+Add project exposes a desktop-only remote-workspace handoff. Trusted main-frame IPC opens a fresh window with Remote SSH selected, without connecting automatically or replacing the original workspace. A successful connection opens Add project on that host. Browser clients receive desktop instructions. The dialog omits goal; project.add continues to accept optional goal for API compatibility. This customization adopts YOLO once for existing workspace defaults, leaving per-chat overrides untouched; later explicit workspace choices persist. It does not mutate running turns or answer pending questions.

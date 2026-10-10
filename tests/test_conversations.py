@@ -63,7 +63,7 @@ class ConversationTests(unittest.TestCase):
         self.open_service()
         self.assertEqual(self.service.experiment_agents(self.exp['id'])['selected_scope'], first['scope'])
         self.assertEqual(self.service.chat_preferences(first['scope'])['effective']['approval_mode'], 'yolo')
-        self.assertEqual(self.service.chat_preferences(second['scope'])['effective']['approval_mode'], 'ask')
+        self.assertEqual(self.service.chat_preferences(second['scope'])['effective']['approval_mode'], 'yolo')
         self.assertEqual(self.service.context_provider(first['scope'])['experiment_id'], self.exp['id'])
         self.assertEqual(self.service.context_provider(first['scope'])['name'], 'First')
         self.service.read_only = True
@@ -205,7 +205,7 @@ class ConversationTests(unittest.TestCase):
     def test_workspace_permissions_migrate_inherit_reset_and_preserve_explicit_old_override(self):
         self.service.store.put('settings', {'models': {'manager': ''}, 'monitor_enabled': False})
         self.service.store.put('chat_settings:manager', {'model': None, 'reasoning': None, 'approval_mode': 'ask'})
-        self.assertEqual(self.service.store.settings()['approval_mode'], 'ask')
+        self.assertEqual(self.service.store.settings()['approval_mode'], 'yolo')
         self.service.action('settings.save', {'approval_mode': 'yolo', 'timezone': 'America/New_York'})
         self.assertEqual(self.service.chat_preferences('manager')['effective']['approval_mode'], 'ask')
         self.assertEqual(self.service.chat_preferences('project:p1')['effective']['approval_mode'], 'yolo')

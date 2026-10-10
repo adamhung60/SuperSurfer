@@ -17,7 +17,7 @@ from .time_context import validate_timezone
 DEFAULT_SETTINGS = {"backends": {"manager": "codex", "lead": "codex", "worker": "codex"}, "models": {"manager": "", "lead": "", "worker": ""},
                     "reasoning": {"manager": "medium", "lead": "high", "worker": "medium"},
                     "monitor_interval_minutes": 15, "monitor_enabled": False,
-                    "approval_mode": "ask", "timezone": None}
+                    "approval_mode": "yolo", "timezone": None}
 
 
 class Conflict(ValueError):
@@ -69,7 +69,16 @@ class Store:
 
     def settings(self):
         result = json.loads(json.dumps(DEFAULT_SETTINGS))
-        saved = self.get("settings", {})
+        # This customization adopts YOLO once for existing workspace defaults too.
+        # Explicit per-conversation overrides remain separate and untouched. Later
+        # workspace choices survive upgrades/restarts rather than being reset.
+        with self.lock:
+            saved = self.get("settings", {})
+            if not self.get("permissions_default_yolo_v1", False):
+                saved = {**saved, "approval_mode": "yolo"}
+                with self.db:
+                    self.db.execute("INSERT OR REPLACE INTO kv VALUES(?,?)", ("settings", json.dumps(saved)))
+                    self.db.execute("INSERT OR REPLACE INTO kv VALUES(?,?)", ("permissions_default_yolo_v1", "true"))
         for key, value in saved.items():
             if key in {"models", "reasoning", "backends"}:
                 result[key].update(value)

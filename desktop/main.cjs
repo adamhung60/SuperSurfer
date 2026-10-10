@@ -84,7 +84,8 @@ async function connectWindow(context, raw) {
       }
     });
     sendStatus(context, 'connected', 'Workspace connected.');
-    await context.window.loadURL(next.origin);
+    await context.window.loadURL(next.origin+(context.addProject?'/?add_project=1':''));
+    context.addProject=false;
     return {ok:true};
   } catch (error) {
     next?.child?.kill();
@@ -108,13 +109,13 @@ function visibleBounds(bounds) {
   const width=Math.max(1000,Math.min(bounds.width,r.width)),height=Math.max(680,Math.min(bounds.height,r.height));
   return {width,height,x:Math.max(r.x,Math.min(bounds.x,r.x+r.width-width)),y:Math.max(r.y,Math.min(bounds.y,r.y+r.height-height))};
 }
-function makeWindow(record = store.create()) {
+function makeWindow(record = store.create(), {addProject=false} = {}) {
   const existing = windows.get(record.id);if (existing) { focus(existing);return existing; }
   record.open = true;store.save();
   const partition = session.fromPartition('persist:workspace-'+record.id);
   const window = new BrowserWindow({width:1480,height:940,...visibleBounds(record.bounds),minWidth:1000,minHeight:680,title:windowLabel(record)+' — SuperSurfer',backgroundColor:nativeTheme.shouldUseDarkColors?'#1c201c':'#f8f8f6',titleBarStyle:'hiddenInset',trafficLightPosition:{x:18,y:20},show:false,
     webPreferences:{preload:path.join(__dirname,'preload.cjs'),session:partition,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
-  const context = {window,record,connection:null,attempt:null,status:{phase:'idle',message:''},restoreRequested:false,editing:true};
+  const context = {window,record,connection:null,attempt:null,status:{phase:'idle',message:''},restoreRequested:false,editing:true,addProject};
   windows.set(record.id,context);
   partition.setPermissionRequestHandler((_contents,_permission,callback) => callback(false));
   partition.webRequest.onBeforeSendHeaders((details,callback) => {
@@ -207,8 +208,9 @@ else {
     ipcMain.handle('provider:login',(event,backend)=>{const context=ownWindow(event);if(!context.connection)throw new Error('Connect a workspace first.');return openProviderLogin(context.connection.config,backend);});
     ipcMain.handle('port:open',(event,fields)=>openPort(ownWindow(event),fields));
     ipcMain.handle('panel:open',(event,fields)=>openPanel(ownWindow(event),fields));
+    ipcMain.handle('project:remote',event => { ownWindow(event);makeWindow(store.create(),{addProject:true});return {opened:true}; });
     ipcMain.handle('window:new',event => { ownWindow(event);makeWindow();return {opened:true}; });
-    ipcMain.handle('configuration',event => ownWindow(event,true).record.config || {});
+    ipcMain.handle('configuration',event => {const context=ownWindow(event,true);return context.record.config || (context.addProject?{mode:'remote'}:{});});
     ipcMain.handle('panel:list',event=>{const parent=ownWindow(event);return [...panelWindows.values()].filter(panel=>panel.parent===parent).map(panel=>({id:panel.window.webContents.id,...panel.fields}));});
     ipcMain.handle('hosts:list',event => { ownWindow(event,true);return knownHosts(); });
     ipcMain.handle('connection:ready',event => {

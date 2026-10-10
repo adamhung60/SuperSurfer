@@ -917,3 +917,43 @@ node-onboarding failure because this host lacks
 `python3.12-venv`. The isolated Codex attachment test reproduced the same
 error. Mac packaging and native restart were not run on this Linux host; the
 feature is not installed in the user's current Mac app.
+
+## Remote project entry and YOLO default — 2026-10-10
+
+Add project opens Remote SSH setup in a separate native window, then opens the
+project form on the connected host. Browser fallback, failure/retry, draft
+preservation, goal-free creation and explicit editor trust passed the new
+`tests/remote-project.browser.cjs` regression. The screenshot is saved in the
+project artifact library as `remote-project-dialog.png` (synthetic fixture).
+`tests/remote-project.electron.cjs` passed remote defaults, independent windows,
+no automatic connection and untrusted IPC rejection. Both tests passed against
+the isolated branch and the shared checkout. No real SSH connection was attempted.
+
+`PYTHONPATH=tests python3 -m unittest test_permissions test_conversations test_yolo_default -v`
+passed 21 tests on both checkouts. The state-sequence and default tests passed
+four tests on the shared checkout, including 180 randomized preference/restart
+steps. Explicit chat overrides survive the one-time YOLO workspace migration;
+subsequent workspace choices remain persistent.
+
+`TMPDIR=/private/tmp npm test`: Python ran 717 tests, with 7 failures, 1 error and
+34 skips. All eight failures/errors reproduced in the corresponding clean
+origin/main groups: seven node-preparation tests require rsync `--protect-args`,
+which this Mac's rsync does not support, and the Codex timeout fixture times out
+during initialization. The canonical TMPDIR resolves Mac /var versus /private/var
+fixture mismatches. Node was run separately because npm stops on Python failure:
+`TMPDIR=/private/tmp node --test tests/*.test.cjs` passed 39, skipped 5, failed 0.
+The capability-skill checker and `git diff --check` passed.
+
+`npm run package:mac` built the isolated branch for darwin-arm64, without a
+version bump. `node tests/mac-package.electron.cjs` passed strict signature checks
+and isolated-profile launches for the original bundle and ZIP-extracted app.
+Artifact: `/private/tmp/supersurfer-remote-project/dist/SuperSurfer-0.1.40-mac-arm64.zip`.
+Signing is local/ad-hoc, not Developer ID signing or notarization. This does not
+prove downloaded-archive Gatekeeper behavior. No installation, running-app
+restart, live-service restart or external research execution occurred.
+
+The board check action returned “Configure this block's command argument array
+before starting it”; no board check receipt or preview is claimed. Direct process
+results above are the verification evidence. The focused patch is applied to the
+shared source checkout with unrelated edits preserved; its package and PR use an
+isolated branch from origin/main.

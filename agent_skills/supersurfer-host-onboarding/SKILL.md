@@ -299,3 +299,9 @@ computer without changing it. This differs from a compute node's bundled runner
 Python 3.9+ and the project environment. Missing provider CLI guidance does not
 install one automatically or authorize collecting credentials. Fresh account
 choice persists all three role defaults; compute-only nodes still need no login.
+
+For a project whose repository is on another machine, desktop **Add a project →
+Connect a remote machine…** opens SSH workspace setup in a separate window.
+After connecting, choose that host’s project folder. This is a workspace
+connection, not compute-pool registration or permission to queue a run. Browser
+clients show desktop instructions; the existing window and remote work remain.

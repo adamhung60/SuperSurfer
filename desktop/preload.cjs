@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('superSurferDesktop', {
   openProviderLogin: backend => ipcRenderer.invoke('provider:login',backend),
   openPort: fields => ipcRenderer.invoke('port:open',fields),
   openPanel: fields => ipcRenderer.invoke('panel:open', fields),
+  openRemoteProject: () => ipcRenderer.invoke('project:remote'),
   newWindow: () => ipcRenderer.invoke('window:new'),
   configuration: () => ipcRenderer.invoke('configuration'),
   connectionReady: () => ipcRenderer.invoke('connection:ready'),
