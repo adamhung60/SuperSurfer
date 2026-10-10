@@ -257,7 +257,7 @@ class Service(SurfboardService, EditorService, WritingService):
             project["archived"] = bool(self.store.get("project_archived:"+project["id"],False))
             board = self.boards.get(project["id"])
             project["surfboard"] = {**{key: board["compiled"].get(key) for key in ("workflow", "item_label", "tabs", "views", "layouts", "pages", "available_tiles")}, "name": board["board"]["name"], "version": board["version"]}
-            project["surfboard"]["hidden_tabs"] = self.store.get("hidden_view_tabs:" + project["id"] + ":", [])
+            project["surfboard"]["hidden_tabs"] = self.store.get("hidden_view_tabs:" + project["id"] + ":", ["_todos"])
         chats = self.codex.list_chats() if hasattr(self.codex, "list_chats") else []
         state["experiments"] = self.store.import_state(snapshot, state, chats)
         for item in state["experiments"]:

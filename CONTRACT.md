@@ -637,6 +637,8 @@ Submission preparation finishes before a new request is retained. Durable reques
 
 Single-user Electron client on Mac/Linux; Python stdlib sidecar on the current or an SSH-accessible machine. AutoML owns GPU scheduling and run execution. Retired native agents remain read-only history; active owned research conversations run through SuperSurfer. SuperSurfer owns durable chats, documents, reviews and planning metadata. An explicit user queue/run request permits an experiment worker or the workspace manager to release a verified PR-backed run through the appropriately scoped tool. Suggested ideas and recurring reviews never authorize autonomous launches.
 
+New research work items default to Overview, Runs and Results pages. Documents remain available in the page catalog and technical notes remain accessible from Overview. The utility To-dos tab starts hidden for new project and work-item views; the user can restore it from the page menu. Saved layout and visibility choices take precedence over these defaults.
+
 ## Persistent desktop windows
 
 The desktop stores validated connection configuration, navigation, normal bounds, maximized state and open/closed status per window in a private, atomically replaced `windows.json`. It migrates legacy `connection.json` and `workspace.json` once. Credentials, tokens, transient forwarded ports and agent instructions are not stored in this file. Quit restores the open windows; if none remain open, reopening restores the most recently used successful workspace. New Window is independent; Open Recent focuses an already-open matching record or restores that record. Different service roots/ports on the same target remain distinct.

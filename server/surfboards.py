@@ -524,7 +524,7 @@ def _default_layout(board, level):
         defaults.update(compute=("main", 10), artifacts=("main", 40))
     else:
         defaults.update(runs=("main" if board["workflow"] == "research" else "hidden", 10),
-                        results=("main", 20), documents=("main", 30))
+        results=("main", 20), documents=("hidden", 30))
     by_id = {node["id"]: node for node in board["nodes"]}
     answer = []
     for row in layout_catalog(board, level):
