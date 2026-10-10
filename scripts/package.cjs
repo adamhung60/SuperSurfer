@@ -16,7 +16,7 @@ require('./build-remote.cjs');
     appBundleId: 'research.supersurfer.desktop', appCategoryType: 'public.app-category.developer-tools',
     out: path.join(root, 'dist'), overwrite: true, asar: false,
     icon: path.join(root, platform === 'darwin' ? 'desktop/icon.icns' : 'desktop/icon.png'),
-    ignore: [/^\/dist(?:\/|$)/, /^\/tests(?:\/|$)/, /^\/\.git(?:\/|$)/, /^\/\.pytest_cache(?:\/|$)/, /^\/node_modules(?:\/|$)/, /__pycache__/],
+    ignore: [/^\/dist(?:\/|$)/, /^\/tests(?:\/|$)/, /^\/\.git(?:\/|$)/, /^\/\.SuperSurfer(?:\/|$)/, /^\/\.pytest_cache(?:\/|$)/, /^\/node_modules(?:\/|$)/, /__pycache__/],
     darwinDarkModeSupport: true,
     // Renaming/repacking Electron invalidates its original bundle signature.
     // Reuse a saved certificate so local updates retain their macOS identity.

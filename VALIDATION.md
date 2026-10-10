@@ -932,3 +932,5 @@ feature is not installed in the user's current Mac app.
 - Board commands were unconfigured; no successful board receipt is claimed. User waived the running preview. No installed app was replaced or restarted.
 
 Diagnostics: not applicable — requested presentation and local signing improvements, not a live workspace failure.
+
+The final package excludes `.SuperSurfer` workspace data; native package regression checks assert its absence in both original and extracted apps.

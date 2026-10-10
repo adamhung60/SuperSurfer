@@ -17,6 +17,7 @@ const {execFileSync}=require('node:child_process');
   try{
     execFileSync('ditto',['-x','-k',archive,extracted]);
     for(const [index,appPath] of [bundle,path.join(extracted,'SuperSurfer.app')].entries()){
+      assert.equal(fs.existsSync(path.join(appPath,'Contents','Resources','app','.SuperSurfer')),false,'Packaged app must not include workspace state');
       execFileSync('codesign',['--verify','--deep','--strict',appPath],{stdio:'pipe'});
       const profile=path.join(temporary,`profile-${index}`);
       application=await electron.launch({executablePath:path.join(appPath,'Contents/MacOS/SuperSurfer'),chromiumSandbox:true,args:[`--user-data-dir=${profile}`],timeout:30000});
