@@ -57,10 +57,14 @@ it. Cancellation or a failed build leaves the installed app unchanged. Save open
 be writable by your user; project and workspace data are not replaced. The first
 installation of a build containing Customize must use the ordinary package
 installation path, since an older app has no in-app updater.
-When reconnecting after an app update, a systemd-managed workspace service
-switches to the UI and server bundled with the new app; the workspace state stays
-in its existing folder. The connection shows an error if an older detached
-service needs a manual restart.
+After a confirmed Customize install, the app reconnects to the same workspace
+and restarts its authenticated service to load the new UI and server. Active agent
+turns can be interrupted and are not replayed; saved history and workspace data
+stay in place. A failed service startup restores the previous service. The restart
+permission is limited to the installed bundle and the original workspace, and
+clears after a successful connection. Older services without process identity
+support need one manual restart when first upgrading to this build. Ordinary
+reconnects do not restart detached services without a confirmed install.
 
 Use a page tab’s **⋯** menu or right-click → **Remove page**. Each block’s handle/menu offers **Remove block**, including outside Rearrange. Source files, notes, results and running work are kept. Utility/Markdown tabs can be restored from the page menu; removed blocks can be added again through Rearrange. Drag Results report tabs to reorder; their menu removes a report into the recoverable **Removed** list.
 

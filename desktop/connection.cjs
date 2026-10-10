@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const net = require('node:net');
 const os = require('node:os');
+const {createHash}=require('node:crypto');
 
 const SSH_OPTIONS = ['-T', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'ClearAllForwardings=yes', '-o', 'ForkAfterAuthentication=no', '-o', 'ConnectTimeout=12', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3'];
 const BOOTSTRAP_SSH_OPTIONS = [...SSH_OPTIONS,'-o','ControlMaster=no','-o','ControlPath=none','-o','ControlPersist=no','-o','StdinNull=no','-o','SessionType=default','-o','RemoteCommand=none'];
@@ -157,20 +158,21 @@ async function startTunnel(config, ready, { sshOptions = SSH_OPTIONS, signal } =
     throw error;
   }
 }
-async function connect(raw, onStatus = () => {}, { signal } = {}) {
+async function connect(raw, onStatus = () => {}, { signal,customizeUpgrade=false } = {}) {
   signal?.throwIfAborted();
   const config = validateConfig(raw);
   await checkRequirements(config,onStatus,signal);
   onStatus('Preparing your workspace…');
   const script = fs.readFileSync(path.join(__dirname, 'bootstrap.py'), 'utf8');
   const bundle = fs.readFileSync(path.join(__dirname, 'remote.tar.gz'));
-  const setupConfig={...config,bundle_size:bundle.length};
+  const setupConfig={...config,bundle_size:bundle.length,...(customizeUpgrade?{customize_upgrade:createHash('sha256').update(bundle).digest('hex')}:{})};
+  const setupTimeout=customizeUpgrade?180000:90000;
   const remoteCommand = `python3 -c ${shellQuote(script)} ${shellQuote(JSON.stringify(setupConfig))}`;
   let result;
   if (config.mode === 'local') {
-    try { result = await collect(process.env.SUPERSURFER_PYTHON || 'python3', ['-c', script, JSON.stringify(setupConfig)], bundle, 90000, signal, onStatus); }
+    try { result = await collect(process.env.SUPERSURFER_PYTHON || 'python3', ['-c', script, JSON.stringify(setupConfig)], bundle, setupTimeout, signal, onStatus); }
     catch (error) { throw connectionError(error,config); }
-  } else {try {result = await collect('/usr/bin/ssh', [...BOOTSTRAP_SSH_OPTIONS, config.target, remoteCommand], bundle, 90000, signal, onStatus);}catch(error){throw connectionError(error,config);}}
+  } else {try {result = await collect('/usr/bin/ssh', [...BOOTSTRAP_SSH_OPTIONS, config.target, remoteCommand], bundle, setupTimeout, signal, onStatus);}catch(error){throw connectionError(error,config);}}
   signal?.throwIfAborted();
   const ready = parseSetupResponse(result);
   if (config.mode === 'local') {

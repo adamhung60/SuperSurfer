@@ -6,6 +6,7 @@ const { execFile, spawn } = require('node:child_process');
 const { promisify } = require('node:util');
 const { randomUUID, createHash } = require('node:crypto');
 const run = promisify(execFile);
+const {authorizeWorkspaceUpgrade,workspaceUpgrade,clearWorkspaceUpgrade}=require('./customize-upgrade.cjs');
 
 function sourcePackage(directory, requireGit = true) {
   try {
@@ -131,7 +132,7 @@ function createCustomize({app, dialog, getWindow, quit, platform=process.platfor
       await run(nodeTools.npm, ['ci'], {cwd:source.root, timeout:10*60*1000, maxBuffer:4*1024*1024, env:{...process.env, PATH:nodeTools.pathEnv}});
       await run(nodeTools.npm, ['run', 'package:mac'], {cwd:source.root, timeout:10*60*1000, maxBuffer:4*1024*1024, env:{...process.env, PATH:nodeTools.pathEnv, SUPERSURFER_PLATFORM:'darwin', SUPERSURFER_ARCH:process.arch}});
       const candidate = await verifyMacApp(path.join(source.root, 'dist', `SuperSurfer-darwin-${process.arch}`, 'SuperSurfer.app'), source.version, source.fingerprint||null);
-      prepared = {candidate, version:source.version, source:source.root, snapshot:fromWorkspace, fingerprint:source.fingerprint||null};
+      prepared = {candidate, version:source.version, source:source.root, snapshot:fromWorkspace, fingerprint:source.fingerprint||null, workspaceConfig:connection?.config||null};
     } catch (error) {
       if(fromWorkspace&&source)fs.rmSync(path.dirname(source.root),{recursive:true,force:true});
       throw new Error(error.stderr?.trim()?.slice(-1600) || error.message);
@@ -146,7 +147,7 @@ function createCustomize({app, dialog, getWindow, quit, platform=process.platfor
     const target = installedAppRoot(app.getAppPath(),platform);
     const parent = path.dirname(target);
     try{fs.accessSync(parent, fs.constants.W_OK);}catch{throw new Error('Move SuperSurfer.app to a folder you can edit before installing this build.');}
-    const answer = await dialog.showMessageBox(getWindow(), {type:'question', buttons:['Cancel','Install and restart'], defaultId:0, cancelId:0, title:'Restart with your changes?', message:'Install the verified SuperSurfer build and restart?', detail:'All app windows will close. Save open editor files first. Your workspace data stays in its current location, and a backup of this app is retained.'});
+    const answer = await dialog.showMessageBox(getWindow(), {type:'question', buttons:['Cancel','Install and restart'], defaultId:0, cancelId:0, title:'Restart with your changes?', message:'Install the verified SuperSurfer build and restart?', detail:'All app windows will close. Save open editor files first. The connected workspace service will also restart to load the new build; active agent turns may be interrupted and are not replayed. Workspace data stays in place, and a backup of this app is retained.'});
     if (answer.response !== 1) return {cancelled:true};
     const updateRoot = fs.mkdtempSync(path.join(parent, '.supersurfer-update-'));
     const staged = path.join(updateRoot, 'SuperSurfer.app');
@@ -155,6 +156,7 @@ function createCustomize({app, dialog, getWindow, quit, platform=process.platfor
       await verifyMacApp(staged, prepared.version, prepared.fingerprint);
       const backup = path.join(parent, `.SuperSurfer-backup-${randomUUID()}.app`);
       const helper = path.join(__dirname, 'customize-restart.sh');
+      authorizeWorkspaceUpgrade(stateFile,prepared.workspaceConfig,fs.readFileSync(path.join(staged,'Contents','Resources','app','desktop','remote.tar.gz')));
       fs.writeFileSync(statusFile, 'waiting for current app to close\n', {mode:0o600});
       const child = spawn('/bin/sh', [helper, String(process.pid), target, staged, backup, statusFile], {detached:true, stdio:'ignore'});
       await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});
@@ -163,8 +165,9 @@ function createCustomize({app, dialog, getWindow, quit, platform=process.platfor
       prepared = null;
       setTimeout(quit, 100);
       return {restarting:true};
-    } catch (error) { fs.rmSync(updateRoot, {recursive:true,force:true}); throw error; }
+    } catch (error) { clearWorkspaceUpgrade(stateFile);fs.rmSync(updateRoot, {recursive:true,force:true}); throw error; }
   }
-  return {status, chooseSource, build, apply};
+  const upgrade=(config,consume=false)=>workspaceUpgrade(stateFile,config,fs.readFileSync(path.join(app.getAppPath(),'desktop','remote.tar.gz')),consume);
+  return {status, chooseSource, build, apply,workspaceUpgrade:config=>upgrade(config),workspaceConnected:config=>upgrade(config,true)};
 }
 module.exports = {sourcePackage, installedAppRoot, verifyMacApp, workspaceSource, createCustomize};

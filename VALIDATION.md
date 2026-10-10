@@ -1,7 +1,7 @@
 # Separate coding chats, Customize install and message resends — October 10, 2026
 
-The final ordinary suite passes: **717 Python tests** (34 optional skips) and
-**39 Node tests** (5 optional SSH skips). It runs with canonical
+The final ordinary suite passes: **722 Python tests** (34 optional skips) and
+**40 Node tests** (5 optional SSH skips). It runs with canonical
 `TMPDIR=/private/tmp` and an isolated conda-forge rsync on PATH; the macOS system
 rsync lacks `--protect-args`. The timeout regression warms its fixture process
 before measuring the 150 ms turn deadline, preserving the no-replay assertion.
@@ -10,7 +10,12 @@ so Codex, Cursor and Claude cases all actually complete.
 
 Focused checks pass: two real-service chat-creation tests, six native Customize
 unit tests, the edit/resend browser fixture and the streamlined Customize browser
-fixture. They cover distinct and idempotent chat creation without inference,
+fixture. Four isolated real-process service-upgrade tests pass for preserving
+history/token, startup rollback, mismatched identity rejection and stop timeout
+without competing processes. Installer tests cover absent/wrong/native bundle
+grants; a Node test checks exact host/state/manager/port and bundle binding,
+expiry and one-use consumption. These checks are included in the task board
+check command. They cover distinct and idempotent chat creation without inference,
 separate idea scopes, retained drafts/history/attachments, polling-safe editing,
 failed sends, busy/approval/read-only states, direct New chat, and build-before-
 install with cancellation/error handling. Provider browser fixtures use simulated

@@ -34,6 +34,18 @@ moving the candidate or issuing the launch command fails. A quit cancelled by
 an unsaved-file prompt leaves the old app in place. This feature does not
 silently elevate filesystem permissions or replace workspace data. Native Mac
 launch and post-launch health must be verified on a Mac before release.
+After native install confirmation, a one-use upgrade permission binds the exact
+new workspace bundle to the original connection config (host, state, manager and
+port), expiring after 24 hours. The reopened app uses it during its automatic
+reconnect and consumes it only after success. A detached service is stopped only
+when its authenticated PID, port and release match the recorded owner; bootstrap
+waits for its exclusive lock, starts the new service and verifies identity/health.
+Failed startup restores the old release. Timeout never force-kills or starts a
+competing service. Read-only, other-host, stale-bundle and unverified legacy
+processes cannot be stopped by this path. Ordinary reconnect behavior stays
+unchanged. Active turns are interrupted without replay; persisted history and
+the research manager remain separate. Legacy services lacking identity support
+need one explicit manual migration restart.
 
 Settings shows Codex, Cursor and Claude together, with status, official CLI sign-in
 and sign-out. The chosen workspace host owns its account, not the Mac client.

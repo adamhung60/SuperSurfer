@@ -2140,7 +2140,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise APIError("Authentication required", 401)
                 query = parse_qs(parsed.query)
                 if path == "/api/session":
-                    result = {"ok": True, "version": __version__, "state_dir": str(self.server.service.directory), "aml_home": str(self.server.service.aml.home), "read_only": self.server.service.read_only}
+                    result = {"ok": True, "version": __version__, "state_dir": str(self.server.service.directory), "aml_home": str(self.server.service.aml.home), "read_only": self.server.service.read_only, "pid": os.getpid(), "port": self.server.server_port, "release_dir": str(Path(__file__).resolve().parents[1])}
                 elif path == "/api/state":
                     result = self.server.service.state()
                 elif path == "/api/app-source":

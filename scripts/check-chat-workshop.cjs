@@ -5,7 +5,10 @@ const chrome='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const env={...process.env,TMPDIR:fs.realpathSync(require('node:os').tmpdir()),...(!process.env.CHROME_PATH&&fs.existsSync(chrome)?{CHROME_PATH:chrome}:{})};
 for(const [command,args] of [
  ['python3',['-m','unittest','discover','-s','tests','-p','test_new_chat.py','-v']],
+ ['python3',['-m','unittest','discover','-s','tests','-p','test_detached_upgrade.py','-v']],
+ ['python3',['-m','unittest','discover','-s','tests','-p','test_installer.py','-v']],
  ['node',['--test','tests/customize.test.cjs']],
+ ['node',['--test','tests/customize-upgrade.test.cjs']],
  ['node',['tests/chat-message-actions.browser.cjs']],
  ['node',['tests/customize.browser.cjs']],
  ['python3',['scripts/check-agent-skills.py']],
