@@ -30,9 +30,9 @@ experiments and GPUs together—and shape the workspace around how you actually 
 - **Make room for your process.** Rearrange panels, split views, open separate
   windows and add reusable HTML blocks. Schedule reviews or metric/status
   follow-ups; remote agents and jobs keep running when you close the app.
-- **Customize SuperSurfer.** Work with an agent in a dedicated app workshop,
-  build the desktop client from a local Mac checkout, and install a verified
-  build through an explicit restart.
+- **Customize SuperSurfer.** Type an idea in the app workshop, review a running
+  visual preview when available, build the changed source, and install a verified
+  desktop build through an explicit restart.
 
 ## Install
 
@@ -45,7 +45,9 @@ experiments and GPUs together—and shape the workspace around how you actually 
 
 **Customize SuperSurfer** appears in the left navigation of builds containing
 this feature. Add a SuperSurfer source checkout as a workspace project, select
-it in Customize, and ask its project agent for changes. **Build workspace
+it in Customize, and type your idea in the main page. The selected project's
+agent receives the request. A configured, running visual preview appears in the
+main page; refresh it after the agent starts or updates the preview. **Build
 changes** copies the saved project source to the Mac client, installs locked
 npm dependencies and packages a locally signed Mac app. A local Git checkout
 can be chosen as an alternative source. **Install and restart** asks

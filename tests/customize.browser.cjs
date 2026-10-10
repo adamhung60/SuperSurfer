@@ -2,12 +2,14 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict');
 const {install}=require('./fixtures/workspace-demo.cjs');
 (async()=>{
- const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ const browser=await chromium.launch({headless:true,args:['--no-sandbox'],...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
  try{
   const page=await browser.newPage({viewport:{width:1280,height:800}}),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
-  const {data}=await install(page,{tab:'overview'});
+  const {data,calls}=await install(page,{tab:'overview'});
   data.projects.push({id:'app-source',name:'SuperSurfer source',repo:'/workspace/SuperSurfer',initialized:true,app_source:true});
+  await page.route('http://demo.test/api/project-activity?*',route=>route.fulfill({json:{actions:[{node_id:'preview-1',node_label:'Visual change',status:'running',preview_url:'/board-preview/demo/'}]}}));
+  await page.route('http://demo.test/board-preview/demo/',route=>route.fulfill({contentType:'text/html',body:'<h1>Visual change preview</h1>'}));
   await page.route('http://demo.test/api/project-agents?*',route=>{const id=new URL(route.request().url()).searchParams.get('project_id');return route.fulfill({json:{agents:[{scope:'project:'+id,name:id==='app-source'?'SuperSurfer source lead':'Second checkout lead',owner:'supersurfer',status:'idle'}]}});});
   await page.addInitScript(()=>{
    window.superSurferDesktop={getCustomizeStatus:async()=>({platform:'darwin',version:'0.1.40',installed:'/Applications/SuperSurfer.app',source:null,prepared:null}),chooseCustomizeSource:async()=>({platform:'darwin',version:'0.1.40',installed:'/Applications/SuperSurfer.app',source:{root:'/Users/me/SuperSurfer'},prepared:null}),buildCustomize:async projectId=>{window.builtProject=projectId;return {platform:'darwin',version:'0.1.40',installed:'/Applications/SuperSurfer.app',source:{root:'/Users/me/SuperSurfer'},prepared:{version:'0.1.40'}};},applyCustomize:async()=>({cancelled:true})};
@@ -16,6 +18,13 @@ const {install}=require('./fixtures/workspace-demo.cjs');
   await page.locator('[data-view="customize"]').click();
   await page.getByRole('heading',{name:'Customize SuperSurfer'}).waitFor();
   assert.equal(await page.locator('#customize-project').inputValue(),'app-source');
+  await page.locator('#customize-idea').fill('Make the project cards easier to scan.');
+  await page.locator('#chat-input').fill('Keep this separate chat draft.');
+  await page.frameLocator('.customize-preview iframe').getByRole('heading',{name:'Visual change preview'}).waitFor();
+  await page.locator('[data-action="customize-send-idea"]').click();
+  await page.waitForFunction(()=>document.querySelector('#customize-idea')?.value==='');
+  assert.equal(await page.locator('#chat-input').inputValue(),'Keep this separate chat draft.');
+  assert.ok(calls.some(call=>['chat.send','chat.steer'].includes(call.op)&&call.params.text.includes('Make the project cards easier to scan.')));
   await page.waitForFunction(()=>document.querySelector('#chat-name')?.textContent==='SuperSurfer source lead');
   data.projects.push({id:'app-source-two',name:'Second checkout',repo:'/workspace/Second',initialized:true,app_source:true});
   await page.locator('#customize-project').selectOption('app-source-two');

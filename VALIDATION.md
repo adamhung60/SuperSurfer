@@ -1,3 +1,23 @@
+# Customize main-page idea and preview — October 10, 2026
+
+The isolated Customize browser fixture passes with a source project: it sends
+typed text to the project conversation, embeds a running `/board-preview/`
+action in the central page, switches projects, and keeps build and restart
+separate. All six Customize Node tests pass with `TMPDIR=/private/tmp` and local
+loopback enabled. `scripts/check-agent-skills.py` and `git diff --check` pass.
+
+`npm run package:mac` produced the arm64 app and ZIP. The packaged-app check
+verified strict signatures, isolated-profile launches and sandboxed setup
+screens for both the app and extracted ZIP. This does not exercise the live
+installation/restart on the user's running workspace.
+
+The broad `npm test` run in the restricted shell reported 715 Python tests with
+20 failures and 61 errors before Node tests. Failures include blocked loopback
+listeners, `/var` versus `/private/var` temporary-path expectations, and the
+already tracked macOS `rsync --protect-args` incompatibility. No backend files
+were changed for this Customize update; the broad suite was not used as a pass
+signal.
+
 # SuperSurfer 0.1.40 — October 9, 2026
 
 Full backend regression: **710 Python tests** pass. The final focused Results
