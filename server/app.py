@@ -1646,6 +1646,21 @@ class Service(SurfboardService, EditorService, WritingService):
             if "approval_mode" in params:
                 result["permission_updates"] = self.apply_workspace_permissions(result["approval_mode"])
             return result
+        if op == "chat.create":
+            if self.read_only:
+                raise APIError("Read-only workspace: chats cannot be created", 403)
+            if set(params) - {"project_id", "name", "request_id"}:
+                raise APIError("Invalid chat creation fields")
+            project = self.lookup("projects", text_field(params, "project_id", 150))
+            if project.get("archived"):
+                raise APIError("Restore this project before creating a chat", 409)
+            request_id = text_field(params, "request_id", 100)
+            if not re.fullmatch(r"[A-Za-z0-9_-]{16,100}", request_id):
+                raise APIError("A stable chat request_id is required")
+            name = text_field(params, "name", 160, required=False) or "New chat"
+            created = self.store.create(project, name, "", request_key="chat_create:" + json.dumps([project["id"], request_id]))
+            scope = "experiment:" + created["id"]
+            return {"experiment_id": created["id"], "scope": scope}
         if op == "experiment.create":
             project = self.lookup("projects", text_field(params, "project_id", 150))
             created = self.store.create(project, text_field(params, "name", 160), text_field(params, "summary", required=False), surfboard_template=params.get("surfboard_template"))

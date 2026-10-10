@@ -44,15 +44,16 @@ experiments and GPUs together—and shape the workspace around how you actually 
 **Settings → Accounts** shows all three providers with sign-in and sign-out. You only need one. Existing conversations stay with their original provider; sign-out keeps their history and requires that provider’s turns to be idle.
 
 **Customize SuperSurfer** appears in the left navigation of builds containing
-this feature. Add a SuperSurfer source checkout as a workspace project, select
-it in Customize, and type your idea in the main page. The selected project's
-agent receives the request. A configured, running visual preview appears in the
-main page; refresh it after the agent starts or updates the preview. **Build
-changes** copies the saved project source to the Mac client, installs locked
-npm dependencies and packages a locally signed Mac app. A local Git checkout
-can be chosen as an alternative source. **Install and restart** asks
-for confirmation, saves a backup of the current app beside it, then relaunches
-the replacement. Save open source files first. The app's containing folder must
+this feature. Connect a SuperSurfer source checkout once; it stays available in
+Customize without taking a row in the Projects sidebar. Each idea opens its own
+agent chat, so multiple ideas can progress independently. **New chat** also opens
+a coding conversation directly, without a feature form. Sent messages offer
+**Edit and resend** and **Resend**; these send a new message with the original
+attachments and preserve earlier messages and replies.
+A configured, running visual preview appears in the main page. **Install and
+restart** copies saved source to the Mac, installs locked dependencies, packages
+and verifies the app, then requests confirmation before replacing and restarting
+it. Cancellation or a failed build leaves the installed app unchanged. Save open source files first. The app's containing folder must
 be writable by your user; project and workspace data are not replaced. The first
 installation of a build containing Customize must use the ordinary package
 installation path, since an older app has no in-app updater.

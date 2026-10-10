@@ -169,3 +169,14 @@ must account for all returned attempts, including failed/pending/unavailable
 measurements; new attempt/status/report changes reopen it. Held-only drafts and
 nonresearch workflows do not force this check. Follow
 [Results checkpoint guidance](../../supersurfer-results/references/results-checkpoint.md).
+
+## New chats and message reuse
+
+Software/web projects expose New chat without a feature form. Each Customize idea
+opens a separate task-backed worker; this does not stop existing chats or transfer
+their native session. Work still follows the new task's copied Surfboard.
+Edit and resend/Resend add an explicit new user message, including captured
+attachments, while retaining original history and tool effects. Active supported
+turns receive clearly labeled direction. Never interpret reuse as a native rollback
+or assume an uncertain earlier delivery failed. AutoML-owned history does not have
+these controls. Draft editing alone sends nothing.

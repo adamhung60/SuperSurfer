@@ -1,3 +1,11 @@
+# Chat and Customize usability
+
+- [x] Edit/resend sent messages with attachment and draft preservation.
+- [x] Direct New chat for coding projects; separate chat for every Customize idea.
+- [x] Keep app source out of the Projects tree and accessible in Customize.
+- [x] One Install and restart action builds/verifies before the native replacement flow.
+- [ ] Verify actual replacement and reopened app only when the user requests installation.
+
 # Customize SuperSurfer feature branch
 
 - [x] Dedicated app workshop, project-scoped agent guidance, local Mac build and staged restart flow.

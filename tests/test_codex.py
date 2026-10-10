@@ -515,6 +515,8 @@ class CodexBridgeTests(unittest.TestCase):
         self.assertIn('Updated experiment',self.doc.read_text()); self.assertTrue(any(a['type']=='fileChange' for a in chat['activity'])); self.assertIsNone(chat['error'])
 
     def test_timeout_bounded_never_replayed(self):
+        # Measure turn delivery timeout, not Python's cold process startup.
+        self.bridge.account()
         self.bridge.RPC_TIMEOUT = .15; self.bridge.send('project:vla','timeout'); chat = self.finished()
         self.assertFalse(chat['busy']); self.assertIn('timed out',chat['error']); self.assertEqual(1,len([r for r in self.requests() if r.get('method')=='turn/start']))
 
