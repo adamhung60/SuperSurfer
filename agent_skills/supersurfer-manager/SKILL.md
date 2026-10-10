@@ -272,6 +272,7 @@ Node/recovery tools use `run_id` to derive project/experiment scope, with no ext
 | `onboard_project_node`, `configure_project_compute` | One validated node or an authorized versioned full-pool/default edit. |
 | `set_project_limits` | Apply the user's GPU/run limits and requested temporary restoration. |
 | `publish_training_results`, `publish_result` | Standard live training comparison or other requested scientific HTML. |
+| `publish_external_runs` | Save read-only external job observations for an explicitly selected experiment; it does not create or control runs. |
 | `update_experiment_brief`, `publish_markdown_tab` | Versioned overview or detailed Markdown; not experiment planning status. |
 | `message_agent`, `list_agent_messages` | Necessary scoped dependency requests, answers and quiet records. |
 | `ask_user` | Essential decision that cannot be recovered from existing instructions. |

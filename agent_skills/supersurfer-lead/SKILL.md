@@ -267,6 +267,7 @@ Node/recovery tools also infer scope from their `run_id`.
 | `configure_project_compute` | Requested complete pool/default change; preserve unrelated nodes and use current version. |
 | `set_project_limits` | Explicit user GPU/run budget decision; optional restoration after `until_run`. |
 | `publish_training_results`, `publish_result` | Standard live training comparisons or other scientific HTML. |
+| `publish_external_runs` | Save read-only external job observations for an explicitly selected experiment in this project; it does not create or control runs. |
 | `update_experiment_brief`, `publish_markdown_tab` | Versioned overview or detailed Markdown. |
 | `message_agent`, `list_agent_messages` | Necessary project-peer/manager coordination, not supervision chatter. |
 | `ask_user` | Essential unresolved decision; await it without inventing authorization. |
