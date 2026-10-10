@@ -26,6 +26,15 @@ an unsaved-file prompt leaves the old app in place. This feature does not
 silently elevate filesystem permissions or replace workspace data. Native Mac
 launch and post-launch health must be verified on a Mac before release.
 
+Automatic updates are an explicit Mac-only opt-in for one connected SuperSurfer
+source project and workspace origin. Native confirmation records that trust
+scope. The client compares an authenticated source-snapshot fingerprint every
+five minutes and waits for a clean committed checkout, then runs the same local build, identity/signature verification,
+backup and restart checks without repeated dialogs. Manual build/install retain
+their confirmations. Failed fingerprints are reported and held until the source
+changes. Disabling the option stops new automatic installs. This setting grants
+no research launch or scheduler authority.
+
 Settings shows Codex, Cursor and Claude together, with status, official CLI sign-in
 and sign-out. The chosen workspace host owns its account, not the Mac client.
 Fresh workspaces ask for an explicit signed-in provider before sending; it persists

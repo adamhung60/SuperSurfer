@@ -56,6 +56,12 @@ the replacement. Save open source files first. The app's containing folder must
 be writable by your user; project and workspace data are not replaced. The first
 installation of a build containing Customize must use the ordinary package
 installation path, since an older app has no in-app updater.
+On Mac, **Automatic updates** can be enabled once for one connected SuperSurfer
+source project. The client checks its clean, committed source every five minutes
+and, when it changes, builds, verifies, backs up and installs the new app without another
+prompt. It is off by default and can be turned off in Customize. Automatic
+restart closes app windows, so save editor changes while this option is enabled.
+A failed source revision is reported and held until the source changes.
 When reconnecting after an app update, a systemd-managed workspace service
 switches to the UI and server bundled with the new app; the workspace state stays
 in its existing folder. The connection shows an error if an older detached

@@ -28,5 +28,6 @@ contextBridge.exposeInMainWorld('superSurferDesktop', {
   chooseCustomizeSource: () => ipcRenderer.invoke('customize:source'),
   buildCustomize: projectId => ipcRenderer.invoke('customize:build',projectId),
   applyCustomize: () => ipcRenderer.invoke('customize:apply'),
+  setCustomizeAutomatic: projectId => ipcRenderer.invoke('customize:automatic',projectId),
   onStatus: callback => { const listener = (_, message) => callback(message); ipcRenderer.on('connection-status', listener); return () => ipcRenderer.removeListener('connection-status', listener); },
 });

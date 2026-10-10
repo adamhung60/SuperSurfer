@@ -206,6 +206,10 @@ else {
     ipcMain.handle('customize:source',event=>{ownWindow(event);return customize.chooseSource();});
     ipcMain.handle('customize:build',(event,projectId)=>{const context=ownWindow(event);return customize.build({connection:context.connection,projectId:projectId??null});});
     ipcMain.handle('customize:apply',event=>{ownWindow(event);return customize.apply();});
+    ipcMain.handle('customize:automatic',(event,projectId)=>{const context=ownWindow(event);return customize.setAutomaticUpdate({connection:context.connection,projectId:projectId??null});});
+    const checkAutomatic=()=>{if(!customize)return;for(const connection of new Set(contexts().map(row=>row.connection).filter(Boolean)))void customize.checkAutomaticUpdate(connection);};
+    setInterval(checkAutomatic,5*60*1000).unref();
+    setTimeout(checkAutomatic,30*1000).unref();
     ipcMain.handle('provider:login',(event,backend)=>{const context=ownWindow(event);if(!context.connection)throw new Error('Connect a workspace first.');return openProviderLogin(context.connection.config,backend);});
     ipcMain.handle('port:open',(event,fields)=>openPort(ownWindow(event),fields));
     ipcMain.handle('panel:open',(event,fields)=>openPanel(ownWindow(event),fields));

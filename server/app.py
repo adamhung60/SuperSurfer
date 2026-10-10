@@ -2158,6 +2158,14 @@ class Handler(BaseHTTPRequestHandler):
                     project = self.server.service.lookup("projects", query.get("project_id", [""])[0])
                     self.respond(200, app_source_snapshot(project["repo"]), "application/gzip")
                     return
+                elif path == "/api/app-source/fingerprint":
+                    project = self.server.service.lookup("projects", query.get("project_id", [""])[0])
+                    source_root = str(Path(project["repo"]).expanduser().resolve())
+                    source_bytes = app_source_snapshot(source_root)
+                    state = subprocess.run(["git", "-C", source_root, "status", "--porcelain", "--untracked-files=all"],
+                                           capture_output=True, check=True, timeout=20)
+                    result = {"fingerprint": hashlib.sha256(source_bytes).hexdigest()[:16],
+                              "source_root": source_root, "clean": not bool(state.stdout)}
                 elif path == "/api/editor":
                     result = {"settings": editor_settings.read(self.server.service.store), "workbench": self.server.service.workbench.status()}
                 elif path == "/api/editor/extensions":
