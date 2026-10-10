@@ -27,7 +27,7 @@ EXPERIMENT_TOOLS = {"create_experiment", "create_experiment_agent", "handoff_exp
 COMPUTE_TOOLS = {"inspect_project_compute", "inspect_compute_host", "register_compute_host", "onboard_project_node",
                  "check_available_node", "acquire_new_node", "recover_run", "set_project_limits", "stop_run"}
 SHARED_CONTENT = {"check_experiment_results", "publish_result", "publish_markdown_tab", "update_experiment_brief", "publish_training_results", "run_board_action", "compile_latex",
-                  "list_project_artifacts", "publish_artifact", "inspect_project_activity"}
+                  "list_project_artifacts", "publish_artifact", "inspect_project_activity", "publish_external_runs"}
 ROLE_TOOLS = {
     "worker": COMMON_TOOLS | SHARED_CONTENT | COMPUTE_TOOLS | {"prepare_run", "queue_run", "configure_worker_wakeup"},
     "lead": COMMON_TOOLS | SHARED_CONTENT | COMPUTE_TOOLS | ITEM_TOOLS | EXPERIMENT_TOOLS | {"configure_project_compute"},
@@ -524,7 +524,7 @@ def _default_layout(board, level):
         defaults.update(compute=("main", 10), artifacts=("main", 40))
     else:
         defaults.update(runs=("main" if board["workflow"] == "research" else "hidden", 10),
-                        results=("main", 20), documents=("main", 30))
+        results=("main", 20), documents=("hidden", 30))
     by_id = {node["id"]: node for node in board["nodes"]}
     answer = []
     for row in layout_catalog(board, level):
@@ -757,7 +757,7 @@ def compile_board(board):
             enabled.add("compile_latex")
         if workflow == "research":
             if "experiment" in block_kinds:
-                enabled.update(EXPERIMENT_TOOLS | {"prepare_run", "queue_run"})
+                enabled.update(EXPERIMENT_TOOLS | {"prepare_run", "queue_run", "publish_external_runs"})
             if "compute" in block_kinds:
                 enabled.update(COMPUTE_TOOLS | {"configure_project_compute", "register_compute_gpus"})
         elif "brief" in block_kinds:

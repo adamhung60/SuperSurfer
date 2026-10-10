@@ -278,6 +278,7 @@ All worker experiment/project targets are fixed by this conversation; omit
 | `register_compute_host`, `onboard_project_node` | Register a new authorized host; validate and save one project node, preserving other nodes/defaults. |
 | `set_project_limits` | Apply an explicit user budget decision; optional `until_run` makes only those fields temporary. |
 | `publish_training_results`, `publish_result` | Standard live training comparisons or other HTML scientific artifacts. |
+| `publish_external_runs` | Save a read-only snapshot of this experiment's externally launched jobs for Runs. Use stable source/job IDs and observed status, progress, host/GPU and health evidence; this never controls a job. |
 | `update_experiment_brief`, `publish_markdown_tab` | Versioned short overview or detailed Markdown page. |
 | `message_agent`, `list_agent_messages` | Bounded dependency coordination; quiet updates do not wake peers. |
 | `ask_user` | One to three essential decisions; await the actual answer, never credentials. |

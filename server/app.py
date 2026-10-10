@@ -20,7 +20,7 @@ import threading
 import time
 import uuid
 from urllib.parse import parse_qs, quote, unquote, urlsplit
-from . import results_review
+from . import results_review, external_runs
 
 from .chat_context import attachments as chat_attachments
 
@@ -257,7 +257,7 @@ class Service(SurfboardService, EditorService, WritingService):
             project["archived"] = bool(self.store.get("project_archived:"+project["id"],False))
             board = self.boards.get(project["id"])
             project["surfboard"] = {**{key: board["compiled"].get(key) for key in ("workflow", "item_label", "tabs", "views", "layouts", "pages", "available_tiles")}, "name": board["board"]["name"], "version": board["version"]}
-            project["surfboard"]["hidden_tabs"] = self.store.get("hidden_view_tabs:" + project["id"] + ":", [])
+            project["surfboard"]["hidden_tabs"] = self.store.get("hidden_view_tabs:" + project["id"] + ":", ["_todos"])
         chats = self.codex.list_chats() if hasattr(self.codex, "list_chats") else []
         state["experiments"] = self.store.import_state(snapshot, state, chats)
         for item in state["experiments"]:
@@ -816,6 +816,21 @@ class Service(SurfboardService, EditorService, WritingService):
                 if name == "supersurfer_publish_training_results":
                     fields = compile_report(fields)
                 return self.results.publish(experiment["id"], fields)
+            if name == "supersurfer_publish_external_runs":
+                info = self._chat_scope(scope)
+                if "agent" in info or not self.codex.chat(scope).get("busy"):
+                    raise APIError("External run observations require an active owned conversation", 403)
+                if not isinstance(arguments, dict):
+                    raise APIError("External run observation must be an object")
+                fields = dict(arguments)
+                if scope == "manager" or scope.startswith("project:"):
+                    experiment = self.store.experiment(text_field(fields, "experiment_id", 180))
+                    if scope.startswith("project:") and experiment["project_id"] != scope.removeprefix("project:"):
+                        raise APIError("Experiment belongs to another project", 403)
+                    fields.pop("experiment_id")
+                else:
+                    experiment = self.experiment_for_scope(scope)
+                return external_runs.publish(self.store, experiment["id"], fields)
             if name == "supersurfer_check_experiment_results":
                 return self.check_results(scope, arguments)
             if name in {"supersurfer_inspect_project_compute", "supersurfer_inspect_compute_host", "supersurfer_register_compute_host", "supersurfer_register_compute_gpus", "supersurfer_onboard_project_node", "supersurfer_configure_project_compute", "supersurfer_set_project_limits"}:
@@ -2168,6 +2183,7 @@ class Handler(BaseHTTPRequestHandler):
                     result = self.server.service.diagnostics(query.get("project_id", [""])[0])
                 elif path == "/api/experiment":
                     result = self.server.service.store.experiment(query.get("id", [""])[0])
+                    result["external_runs"] = external_runs.read(self.server.service.store, result["id"])
                     result["view_layout"] = self.server.service.view_layout(result["project_id"], result["id"])
                     board = self.server.service.board_record(result["project_id"], result["id"])
                     result["surfboard"] = {**board["compiled"], "name": board["board"]["name"], "version": board["version"]}
@@ -2294,7 +2310,7 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/code/save":
                 result = self.server.service.action("code.save", request)
             elif path == "/api/agent-tool":
-                if set(request) - {"name", "arguments"} or request.get("name") not in {"message_agent", "list_agent_messages", "prepare_run", "queue_run", "create_experiment", "create_experiment_agent", "handoff_experiment", "update_experiment", "ask_user", "update_task", "publish_result", "update_experiment_brief", "publish_markdown_tab", "configure_worker_wakeup", "inspect_project_compute", "inspect_compute_host", "register_compute_host", "register_compute_gpus", "onboard_project_node", "configure_project_compute", "set_project_limits", "publish_training_results", "check_experiment_results", "stop_run", "check_available_node", "acquire_new_node", "recover_run", "list_view_blocks", "publish_view_block", "read_surfboard", "propose_surfboard", "read_view_layout", "update_view_layout", "present_code", "manage_todos", "inspect_board_data", "run_board_action", "compile_latex", "create_work_item", "create_work_item_agent", "handoff_work_item", "update_work_item", "list_project_artifacts", "publish_artifact", "inspect_project_activity", "export_diagnostics"}:
+                if set(request) - {"name", "arguments"} or request.get("name") not in {"message_agent", "list_agent_messages", "prepare_run", "queue_run", "create_experiment", "create_experiment_agent", "handoff_experiment", "update_experiment", "ask_user", "update_task", "publish_result", "update_experiment_brief", "publish_markdown_tab", "publish_external_runs", "configure_worker_wakeup", "inspect_project_compute", "inspect_compute_host", "register_compute_host", "register_compute_gpus", "onboard_project_node", "configure_project_compute", "set_project_limits", "publish_training_results", "check_experiment_results", "stop_run", "check_available_node", "acquire_new_node", "recover_run", "list_view_blocks", "publish_view_block", "read_surfboard", "propose_surfboard", "read_view_layout", "update_view_layout", "present_code", "manage_todos", "inspect_board_data", "run_board_action", "compile_latex", "create_work_item", "create_work_item_agent", "handoff_work_item", "update_work_item", "list_project_artifacts", "publish_artifact", "inspect_project_activity", "export_diagnostics"}:
                     raise APIError("This capability exposes only scoped experiment tools", 403)
                 result = self.server.service.agent_action(agent_scope, "supersurfer_" + request["name"], request.get("arguments"))
             else:
