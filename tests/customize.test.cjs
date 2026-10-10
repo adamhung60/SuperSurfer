@@ -61,3 +61,30 @@ test('workspace source transfer is scoped, authenticated and extracted locally',
  assert.equal(source.version,'0.1.40');assert.match(source.fingerprint,/^[a-f0-9]{16}$/);assert.equal(fs.readFileSync(path.join(source.root,'desktop','main.cjs'),'utf8'),'saved source');
  await assert.rejects(workspaceSource(output,{origin:'http://127.0.0.1',token:'test-token'},'../escape'),/Choose a connected/);
 });
+
+test('automatic updates require one native opt-in and remain scoped to its workspace source',async t=>{
+ const http=require('node:http');
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'ss-customize-auto-'));t.after(()=>fs.rmSync(temp,{recursive:true,force:true}));
+ const appPath=path.join(temp,'SuperSurfer.app','Contents','Resources','app');fs.mkdirSync(appPath,{recursive:true});
+ fs.writeFileSync(path.join(appPath,'supersurfer-build.json'),JSON.stringify({source_fingerprint:'a'.repeat(16)}));
+ const app={getPath:()=>temp,getVersion:()=> '0.1.40',getAppPath:()=>appPath,isPackaged:true};
+ let prompts=0,requests=0,sourceRoot='/workspace/SuperSurfer';
+ const server=http.createServer((request,response)=>{requests++;assert.equal(request.url,'/api/app-source/fingerprint?project_id=proj_source');assert.equal(request.headers.authorization,'Bearer test-token');response.writeHead(200,{'Content-Type':'application/json'});response.end(JSON.stringify({fingerprint:'a'.repeat(16),source_root:sourceRoot,clean:true}));});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(()=>server.close());
+ const connection={origin:`http://127.0.0.1:${server.address().port}`,token:'test-token'};
+ const dialog={showMessageBox:async()=>{prompts++;return {response:1};}};
+ const customize=createCustomize({app,dialog,getWindow:()=>null,quit:()=>assert.fail('matching installed source must not restart'),platform:'darwin'});
+ assert.equal(customize.status().automaticProjectId,null);
+ await customize.setAutomaticUpdate({connection,projectId:'proj_source'});
+ assert.equal(prompts,1);
+ assert.equal(customize.status().automaticProjectId,'proj_source');
+ assert.equal(await customize.checkAutomaticUpdate(connection),null);
+  assert.equal(await customize.checkAutomaticUpdate({origin:'http://127.0.0.1:1',token:'other'}),null);
+  assert.equal(requests,2);
+  sourceRoot='/workspace/AnotherCheckout';
+  assert.match((await customize.checkAutomaticUpdate(connection)).error,/source project moved/);
+  assert.equal(requests,3);
+ await customize.setAutomaticUpdate({connection,projectId:null});
+ assert.equal(customize.status().automaticProjectId,null);
+ assert.equal(prompts,1);
+});
