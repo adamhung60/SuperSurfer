@@ -47,6 +47,7 @@ let savedNavigation = null, navigationRestored = false, taskTabs={};
 let customizeStatus=null, customizeError='', customizeLoading=false, customizeActionBusy=false;
 const customizeDrafts=new Map(),newChatRequests=new Map(),newChatBusy=new Set();
 let customizeInstallPhase='';
+let customizePreviewVisible=false;
 async function loadCustomizeStatus(){
  if(!window.superSurferDesktop?.getCustomizeStatus||customizeLoading)return;
  customizeLoading=true;
@@ -466,7 +467,8 @@ function renderMain(){
   const main=$('#main');main.classList.remove('surfboard-main','tiled-page-main','configured-editor-main','results-full-page');delete main.dataset.viewKey;delete main.dataset.tilePageKey;
   if(main.contains($('#chat-panel')))ensureViewDock().append($('#chat-panel'));
   const localOpen=main.querySelector('.customize-local')?.open;
-  main.innerHTML=renderCustomize();if(localOpen)main.querySelector('.customize-local')?.setAttribute('open','');dockChat();return;
+  const previewFocused=main.querySelector('#customize-show-preview')===document.activeElement;
+  main.innerHTML=renderCustomize();if(localOpen)main.querySelector('.customize-local')?.setAttribute('open','');dockChat();if(previewFocused)$('#customize-show-preview')?.focus({preventScroll:true});return;
  }
  $('#layout-toggle').hidden=state.view!=='workspace'||!state.projectId;
  renderProjectSlots();
@@ -1112,16 +1114,17 @@ function customizePreviewUrl(value){
 }
 function renderCustomize(){
  const projects=(state.data?.projects||[]).filter(p=>p.app_source&&!p.archived), selected=projects.find(p=>p.id===state.projectId), native=window.superSurferDesktop?.getCustomizeStatus, info=customizeStatus||{};
- const connected=selected?.repo?`<code>${e(selected.repo)}</code>`:'No source project selected';
+ const sourceLocation=selected?.repo||info.source?.root;
+ const connected=sourceLocation?`<code>${e(sourceLocation)}</code>`:'Not set';
  const options=projects.map(p=>`<option value="${e(p.id)}" ${p.id===state.projectId?'selected':''}>${e(p.name)} · ${e(p.repo||'no repository')}</option>`).join('');
  const previewKey=selected?'activity:'+selected.id+':':null,previewEntry=previewKey?projectPanels.get(previewKey):null;
- if(selected&&!previewEntry&&!projectPanelRequests.has(previewKey))loadProjectPanel('activity',selected.id);
+ if(customizePreviewVisible&&selected&&!previewEntry&&!projectPanelRequests.has(previewKey))loadProjectPanel('activity',selected.id);
  const previews=(previewEntry?.data?.actions||[]).filter(row=>row.status==='running'&&customizePreviewUrl(row.preview_url));
  const idea=customizeDrafts.get(selected?.id)||'';
- return `<div class="page customize-page"><div class="page-eyebrow">${icon('settings')}App workshop</div><div class="page-heading"><div><h1>Customize SuperSurfer</h1><p>Describe a change, review it here, then install when you are ready.</p></div></div>
- <section class="settings-block customize-idea"><h2>What would you like different?</h2>${projects.length>1?`<label class="field"><span>Source checkout</span><select class="control" id="customize-project">${options}</select></label>`:!projects.length?'<div class="notice">Connect a SuperSurfer source checkout to begin.</div>':''}<div class="customize-path">${connected}</div><label class="field" for="customize-idea">Your idea</label><textarea id="customize-idea" class="control" rows="4" placeholder="For example, make the project overview easier to scan…" ${selected?'':'disabled'}>${e(idea)}</textarea><div class="customize-actions"><button class="button primary" data-action="customize-send-idea" ${!selected||readOnly()||!accountGate.ready()||newChatBusy.has(state.projectId)?'disabled':''}>${newChatBusy.has(state.projectId)?'Opening chat…':'Send idea'}</button><button class="button" data-action="customize-open-project" ${selected?'':'disabled'}>Open source</button></div><p class="muted small">Each idea opens a separate agent chat. Switch chats in the Agents list while work continues.</p></section>
- <section class="settings-block customize-preview"><div class="customize-preview-heading"><div><h2>Visual preview</h2><p class="muted small">When a visual preview is running for this source project, it appears here.</p></div><button class="button small-button" data-action="customize-refresh-preview" ${selected?'':'disabled'}>Refresh</button></div>${previewEntry?.error?`<div class="notice warn">${e(previewEntry.error)}</div>`:''}${previews.length?previews.map(row=>`<iframe class="managed-preview" title="${e(row.node_label||'SuperSurfer change preview')}" src="${e(customizePreviewUrl(row.preview_url))}" sandbox="allow-scripts allow-forms"></iframe>`).join(''):`<div class="customize-preview-empty">${previewEntry?'No visual preview is running yet. Ask the agent to start a configured preview for a visual change.':'Checking for a preview…'}</div>`}</section>
- <section class="settings-block"><h2>Install your changes</h2><p>One action builds the saved source, verifies the app, then installs and restarts after confirmation. Your workspace data stays in place.</p>${native?`<div class="customize-facts"><span>Running app</span><strong>${e(info.version||'Loading…')}</strong><span>Installed at</span><code>${e(info.installed||'Packaged app required')}</code></div><div class="customize-actions"><button class="button primary" data-action="customize-install" ${(!selected&&!info.source)||!info.installed||customizeActionBusy?'disabled':''}>${customizeActionBusy?e(customizeInstallPhase):'Install and restart'}</button></div>${info.updateStatus?`<div class="customize-status" role="status">${e(info.updateStatus)}</div>`:''}`:'<div class="notice">Install and restart is available in the macOS desktop app.</div>'}</section>
+ return `<div class="page customize-page"><div class="page-heading"><h1>Customize SuperSurfer</h1></div>
+ <section class="settings-block customize-idea">${projects.length>1?`<label class="field"><span>Source checkout</span><select class="control" id="customize-project">${options}</select></label>`:!projects.length?'<div class="notice">Connect a SuperSurfer source checkout to begin.</div>':''}<div class="customize-path">Source location: ${connected}${!selected&&native&&window.superSurferDesktop.chooseCustomizeSource?` <button class="button small-button" data-action="customize-source" ${customizeActionBusy?'disabled':''}>${sourceLocation?'Change…':'Set up…'}</button>`:''}</div><label class="field" for="customize-idea">Your idea</label><textarea id="customize-idea" class="control" rows="4" placeholder="For example, make the project overview easier to scan…" ${selected?'':'disabled'}>${e(idea)}</textarea><label class="customize-preview-switch"><input type="checkbox" role="switch" id="customize-show-preview" aria-controls="customize-preview-content" ${customizePreviewVisible?'checked':''}>Show visual preview</label><div class="customize-actions"><button class="button primary" data-action="customize-send-idea" ${!selected||readOnly()||!accountGate.ready()||newChatBusy.has(state.projectId)?'disabled':''}>${newChatBusy.has(state.projectId)?'Opening chat…':'Send idea'}</button></div></section>
+ ${customizePreviewVisible?`<section class="settings-block customize-preview" id="customize-preview-content"><div class="customize-preview-heading"><h2>Visual preview</h2><button class="button small-button" data-action="customize-refresh-preview" ${selected?'':'disabled'}>Refresh</button></div>${previewEntry?.error?`<div class="notice warn">${e(previewEntry.error)}</div>`:''}${previews.length?previews.map(row=>`<iframe class="managed-preview" title="${e(row.node_label||'SuperSurfer change preview')}" src="${e(customizePreviewUrl(row.preview_url))}" sandbox="allow-scripts allow-forms"></iframe>`).join(''):`<div class="customize-preview-empty">${previewEntry?'No preview running.':'Checking for a preview…'}</div>`}</section>`:''}
+ <section class="settings-block"><h2>Install your changes</h2>${native?`<div class="customize-facts"><span>Running app</span><strong>${e(info.version||'Loading…')}</strong><span>Installed at</span><code>${e(info.installed||'Packaged app required')}</code></div><div class="customize-actions"><button class="button primary" data-action="customize-install" ${(!selected&&!info.source)||!info.installed||customizeActionBusy?'disabled':''}>${customizeActionBusy?e(customizeInstallPhase):'Install and restart'}</button></div>${info.updateStatus&&!info.updateStatus.startsWith('Restart command sent.')?`<div class="customize-status" role="status">${e(info.updateStatus)}</div>`:''}`:'<div class="notice">Install and restart is available in the macOS desktop app.</div>'}</section>
 
  ${customizeError?`<div class="notice error" role="alert">${e(customizeError)}</div>`:''}</div>`;
 }
@@ -1465,17 +1468,17 @@ function bindDirectorySuggestions(){
 function showAddProject(){openModal('Add a project',`<p class="modal-description">Choose a shared project folder. Each task can choose its own workflow. Project context is saved in <code>.SuperSurfer</code>.</p><form><div class="field-stack">${field('Project name','name',{placeholder:'my-project',required:true,maxlength:64,pattern:'[a-z0-9]+(?:-[a-z0-9]+)*',help:'Lowercase letters, numbers and single hyphens; up to 64 characters.'})}${projectDirectoryField()}<label class="field"><span>Default surfboard for new tasks</span><select name="surfboard_template"><option value="research">Research · experiments, GPUs, W&B</option><option value="software">Software · features, checks, pull requests</option><option value="web">Web design · pages, browser, preview</option><option value="writing">Research writing · LaTeX, PDF, review</option></select></label>${textarea('Project goal','goal',{placeholder:'What would you like to build or discover?'})}<p class="muted small">No project GPU or concurrent-run cap by default. Add optional limits in the Surfboard’s Compute block.</p></div><p class="muted small">Connecting enables editor extensions, terminals and localhost previews for this folder.</p>${formFooter('Connect & enable tools')}</form>`,'project');bindDirectorySuggestions();bindModalForm(async fd=>{const result=await action('project.add',{name:fd.get('name').trim(),repo:fd.get('repo').trim(),goal:fd.get('goal').trim(),surfboard_template:fd.get('surfboard_template')});const added=result.project||result;await action('editor.trust',{project_id:added.id,repo:added.repo,trusted:true});closeModal();await refreshState(true);const id=result.id||result.project?.id||state.data.projects.find(p=>p.name===fd.get('name').trim())?.id;if(id)await navigate({projectId:id,tab:'overview'});toast('Project connected.');});}
 const codingProject=(p=project())=>!!p&&(p.app_source||['software','web'].includes(p.surfboard?.workflow||p.workflow));
 const newWorkLabel=(p=project())=>codingProject(p)?'New chat':'New '+itemLabel(p);
-async function createNewChat(idea=null){
+async function createNewChat(idea=null,{showPreview=false}={}){
  const p=project();if(!p||readOnly()||newChatBusy.has(p.id))return;
  const projectId=p.id,view=state.view,revision=scopeSelectionRevision;
  const title=idea?idea.replace(/\s+/g,' ').slice(0,100):'New chat';
- const requestKey=JSON.stringify([projectId,idea]),requestId=newChatRequests.get(requestKey)||runRequestId();
+ const requestKey=JSON.stringify([projectId,idea,showPreview]),requestId=newChatRequests.get(requestKey)||runRequestId();
  newChatRequests.set(requestKey,requestId);newChatBusy.add(projectId);renderAgentChooser();if(view==='customize')renderMain();
  let created;
  try{
   created=await action('chat.create',{project_id:projectId,name:title,request_id:requestId});
   newChatRequests.delete(requestKey);
-  const message=idea?`Help me change SuperSurfer in this source project. ${idea}\n\nIf this is visual, show a running preview in Customize SuperSurfer so I can review it. Do not install or restart the app; I will use that button when ready.`:null;
+  const message=idea?`Help me change SuperSurfer in this source project. ${idea}\n\n${showPreview?'If this is visual, show a running preview in Customize SuperSurfer so I can review it. ':''}Do not install or restart the app; I will use that button when ready.`:null;
   if(message){conversationDrafts.set(created.scope,message);if(customizeDrafts.get(projectId)?.trim()===idea)customizeDrafts.delete(projectId);}
   await refreshState(true);
   if(state.projectId===projectId&&scopeSelectionRevision===revision){
@@ -1597,7 +1600,7 @@ async function handleAction(name,el){switch(name){
  case 'maximize-chat':state.chatVisible=true;state.chatMaximized=!state.chatMaximized;applyChatLayout();dockChat();persistNavigation();break;
  case 'close-modal':closeModal();break;
  case 'add-project':showAddProject();break;
- case 'customize-send-idea':{const idea=$('#customize-idea')?.value.trim();if(idea)await createNewChat(idea);break;}
+ case 'customize-send-idea':{const idea=$('#customize-idea')?.value.trim();if(idea)await createNewChat(idea,{showPreview:customizePreviewVisible});break;}
  case 'customize-refresh-preview':if(state.projectId){projectPanels.delete('activity:'+state.projectId+':');await loadProjectPanel('activity',state.projectId);}break;
  case 'customize-open-project':await navigate({projectId:state.projectId,tab:'editor'});break;
  case 'customize-source':customizeActionBusy=true;renderMain();try{customizeStatus=await window.superSurferDesktop.chooseCustomizeSource();customizeError='';}catch(error){customizeError=error.message;}finally{customizeActionBusy=false;renderMain();}break;
@@ -1709,7 +1712,7 @@ $('#chat-questions').addEventListener('input',updateQuestionDraft);
 $('#chat-questions').addEventListener('change',updateQuestionDraft);
 $('#chat-questions').addEventListener('submit',answerQuestion);
 $('#chat-form').addEventListener('submit',sendChat);
-document.addEventListener('change',event=>{if(event.target.id==='customize-project'&&state.view==='customize')void navigate({view:'customize',projectId:event.target.value,tab:'overview'});});
+document.addEventListener('change',event=>{if(event.target.id==='customize-show-preview'&&state.view==='customize'){customizePreviewVisible=event.target.checked;renderMain();$('#customize-show-preview')?.focus({preventScroll:true});}if(event.target.id==='customize-project'&&state.view==='customize')void navigate({view:'customize',projectId:event.target.value,tab:'overview'});});
 document.addEventListener('input',event=>{if(event.target.id==='customize-idea'&&state.view==='customize'&&state.projectId)customizeDrafts.set(state.projectId,event.target.value);});
 $('#chat-input').addEventListener('input',resizeComposer);
 $('#chat-input').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendChat();}});
