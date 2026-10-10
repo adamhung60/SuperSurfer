@@ -77,3 +77,5 @@ xattr -dr com.apple.quarantine "/Applications/SuperSurfer.app"
 Reopen the app. This clears its download quarantine; it does not sign or notarize it.
 
 [Agent contribution guide](.agents/README.md) · [More details](CONTRACT.md) · [Roadmap](TODO.md)
+
+New projects can use folders on several connected workspace hosts in one window. In **Add a project**, choose **Connect a different machine…** to add an SSH host, then select its project folder from the machine list. Projects remain together in the workspace view and their actions go to the owning host. No project goal is required. This customization defaults workspace permissions to YOLO (including a one-time update of existing workspace defaults); explicit chat overrides and subsequent Settings choices are preserved.

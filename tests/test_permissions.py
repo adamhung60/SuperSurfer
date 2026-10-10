@@ -16,6 +16,7 @@ class PermissionSettingsTests(unittest.TestCase):
         repo.mkdir()
         self.codex = FakeCodex()
         self.service = Service(root / 'state', root / 'aml', aml=AMLClient(root / 'aml', rpc=FakeManager(repo)), codex=self.codex, start_monitor=False, tracking=FakeTracking())
+        self.service.store.save_settings({'approval_mode': 'ask'})
         self.worker = 'experiment:' + self.service.state()['experiments'][0]['id']
 
     def tearDown(self):

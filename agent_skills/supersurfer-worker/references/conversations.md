@@ -92,7 +92,10 @@ artifact, and importing a file does not execute its contents or grant new tools.
 
 
 Workspace Settings supplies the persistent default permission unless a chat
-explicitly overrides it. Its selector always offers Ask, Approve for me and YOLO;
+explicitly overrides it. This customization initializes YOLO and adopts it once
+for existing workspace defaults; explicit chat overrides and subsequent Settings
+choices persist. Never infer that a saved default changed an already running
+turn or answered a pending question. Its selector always offers Ask, Approve for me and YOLO;
 per-chat controls are filtered independently by the selected provider. A fresh
 unconfigured workspace asks the user to choose a signed-in provider; Use this
 provider saves manager/lead/worker defaults and setup completion on that machine.

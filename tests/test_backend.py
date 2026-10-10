@@ -168,6 +168,7 @@ class BackendTests(unittest.TestCase):
         self.manager = FakeManager(self.repo)
         self.client = AMLClient(self.root / "aml", rpc=self.manager)
         self.service = Service(self.root / "state", self.root / "aml", aml=self.client, codex=FakeCodex(), start_monitor=False, tracking=FakeTracking())
+        self.service.store.save_settings({"approval_mode": "ask"})
     def tearDown(self):
         self.service.close()
         self.tmp.cleanup()

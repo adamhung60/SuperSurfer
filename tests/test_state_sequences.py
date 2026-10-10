@@ -17,7 +17,7 @@ class StateSequenceTests(unittest.TestCase):
         seed = int(os.environ.get('SUPERSURFER_QA_SEED', '1337'))
         rng = random.Random(seed)
         scopes = [self.new_agent(name='Worker '+str(i))['scope'] for i in range(4)]
-        default = 'ask'; overrides = {scope: None for scope in scopes}; archived = dict.fromkeys(scopes, False)
+        default = 'yolo'; overrides = {scope: None for scope in scopes}; archived = dict.fromkeys(scopes, False)
         selected = scopes[-1]
         for step in range(180):
             scope = rng.choice(scopes); operation = rng.randrange(5)
