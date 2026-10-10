@@ -77,3 +77,21 @@ xattr -dr com.apple.quarantine "/Applications/SuperSurfer.app"
 Reopen the app. This clears its download quarantine; it does not sign or notarize it.
 
 [Agent contribution guide](.agents/README.md) · [More details](CONTRACT.md) · [Roadmap](TODO.md)
+
+Conversation tabs keep scoped chats one click away, with separate drafts and a quiet empty composer. Previous and archived chats remain available through chat history.
+
+For repeated local Mac updates, configure a persistent signing certificate once:
+
+```sh
+node scripts/configure-mac-signing.cjs --create
+```
+
+This explicit setup creates a private signing key in the default user Keychain and
+trusts its certificate for code signing only. Future `package:mac` and Customize
+builds reuse the public fingerprint saved outside the checkout in
+`~/Library/Application Support/SuperSurfer/mac-signing.json`. You can instead use
+`--identity CERTIFICATE_SHA1` for an existing valid code-signing certificate.
+Keep that key: missing/expired configured identities fail the build instead of
+silently switching identities. An initial move from ad-hoc signing may require
+one final macOS App Management approval. Local signing is not Developer ID
+signing or notarization and does not bypass Gatekeeper.

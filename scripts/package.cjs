@@ -9,21 +9,24 @@ require('./build-remote.cjs');
 (async () => {
   const platform = process.env.SUPERSURFER_PLATFORM || 'darwin';
   const arch = process.env.SUPERSURFER_ARCH || (platform === 'darwin' ? 'arm64' : process.arch);
+  const signing=platform==='darwin'&&process.platform==='darwin'?require('../desktop/mac-signing.cjs').resolveMacSigning():null;
   const apps = await packager({
     dir: root, name: 'SuperSurfer', platform, arch,
     electronVersion: require('../package.json').devDependencies.electron,
     appBundleId: 'research.supersurfer.desktop', appCategoryType: 'public.app-category.developer-tools',
     out: path.join(root, 'dist'), overwrite: true, asar: false,
     icon: path.join(root, platform === 'darwin' ? 'desktop/icon.icns' : 'desktop/icon.png'),
-    ignore: [/^\/dist(?:\/|$)/, /^\/tests(?:\/|$)/, /^\/\.git(?:\/|$)/, /^\/\.pytest_cache(?:\/|$)/, /^\/node_modules(?:\/|$)/, /__pycache__/],
+    ignore: [/^\/dist(?:\/|$)/, /^\/tests(?:\/|$)/, /^\/\.git(?:\/|$)/, /^\/\.SuperSurfer(?:\/|$)/, /^\/\.pytest_cache(?:\/|$)/, /^\/node_modules(?:\/|$)/, /__pycache__/],
     darwinDarkModeSupport: true,
     // Renaming/repacking Electron invalidates its original bundle signature.
-    // Seal native Mac builds locally; this does not provide Developer ID trust.
+    // Reuse a saved certificate so local updates retain their macOS identity.
+    // Without one, local builds remain ad-hoc; neither option implies notarization.
     osxSign: platform === 'darwin' && process.platform === 'darwin' ? {
-      identity: '-', identityValidation: false,
+      identity: signing.identity, identityValidation: false,
+      // Local builds need stable identity, not a network timestamp service.
       preAutoEntitlements: false, preEmbedProvisioningProfile: false,
       // Ad-hoc identities have no Team ID for hardened-runtime library validation.
-      optionsForFile: () => ({ hardenedRuntime: false }),
+      optionsForFile: () => ({ hardenedRuntime: false, timestamp: 'none' }),
       continueOnError: false,
     } : undefined,
   });

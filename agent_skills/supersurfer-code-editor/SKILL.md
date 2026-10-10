@@ -343,3 +343,5 @@ remaining docked panels; inside Rearrange, Done/Cancel still controls its draft.
 Dirty Monaco models/native parked frames survive view removal in the current
 window session, not as a promise of durability after closing/reloading the app.
 Save intended source before ending that session; removal neither saves nor deletes it.
+
+The chat panel uses horizontal conversation tabs. Switching tabs preserves each conversation’s unsent draft and context chips. Arrow keys and Home/End navigate the tab strip. Show chat history reveals previous and archived chats; tab selection alone does not send work, resume an agent, or stop another conversation.

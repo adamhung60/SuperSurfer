@@ -1,0 +1,46 @@
+'use strict';
+const {chromium}=require('playwright'),assert=require('node:assert/strict');
+const {install}=require('./fixtures/workspace-demo.cjs');
+(async()=>{
+ const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
+ try{
+  const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  const {calls}=await install(page,{tab:'overview'});
+  const agents=[{scope:'experiment:demo-e14',name:'First chat',owner:'supersurfer',status:'idle'},...Array.from({length:8},(_,i)=>({scope:'conversation:tab-'+i,name:'Conversation '+(i+2),owner:'supersurfer',status:i===0?'working':'idle',busy:i===0})),{scope:'conversation:archived',name:'Archived chat',owner:'supersurfer',archived:true}];
+  await page.route('http://demo.test/api/experiment-agents?*',route=>route.fulfill({json:{selected_scope:agents[0].scope,agents}}));
+  await page.route('http://demo.test/api/chat?*',route=>{const scope=new URL(route.request().url()).searchParams.get('scope');return route.fulfill({json:{messages:scope===agents[1].scope?[{id:'saved',role:'assistant',text:'Saved conversation history.',created:1}]:[],agent:{name:agents.find(a=>a.scope===scope)?.name},busy:false,preferences:{editable:true,defaults:{},overrides:{},effective:{}}}});});
+  await page.route('http://demo.test/api/action',route=>{const call=route.request().postDataJSON();calls.push(call);return route.fulfill({json:call.op==='experiment.agent.select'?{agents,selected_scope:call.params.scope}:{accepted:true}});});
+  await page.goto('http://demo.test/');
+  const tabs=page.getByRole('tablist',{name:'Chats'});
+  await tabs.getByRole('tab',{name:'First chat',exact:false}).waitFor();
+  assert.equal(await tabs.getByRole('tab').count(),9);
+  await page.waitForFunction(()=>document.querySelector('#chat-messages').textContent==='');
+  assert.equal(await page.locator('.chat-suggestions').count(),0);
+  await page.locator('#chat-input').fill('Draft for first chat');
+  await tabs.getByRole('tab',{name:/First chat/}).focus();await page.keyboard.press('ArrowRight');
+  await page.getByText('Saved conversation history.',{exact:true}).waitFor();
+  assert.equal(await page.locator('#chat-input').inputValue(),'');
+  await page.locator('#chat-input').fill('Draft for second chat');
+  await tabs.getByRole('tab',{name:/Conversation 2 /}).focus();await page.keyboard.press('Home');
+  await page.waitForFunction(()=>document.querySelector('#chat-input').value==='Draft for first chat');
+  await page.keyboard.press('End');
+  await page.waitForFunction(()=>document.querySelector('[role=tab][aria-selected=true]').textContent.includes('Conversation 9'));
+  assert.equal(await tabs.evaluate(el=>el.scrollLeft>0),true);
+  await page.getByRole('button',{name:'Show chat history',exact:true}).click();
+  await tabs.getByRole('tab',{name:/Archived chat/}).click();
+  await page.getByRole('button',{name:'Restore chat',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Show chat history',exact:true}).click();
+  assert.equal(await tabs.getByRole('tab',{name:/Archived chat/}).count(),1,'Selected archived chat stays accessible');
+  await tabs.getByRole('tab',{name:/Conversation 2 /}).click();
+  await page.waitForFunction(()=>document.querySelector('#chat-input').value==='Draft for second chat');
+  assert.equal(calls.some(c=>['chat.send','chat.steer','experiment.agent.resume','chat.stop'].includes(c.op)),false);
+  await page.screenshot({path:'/tmp/supersurfer-chat-tabs-light.png',fullPage:true});
+  await page.locator('#chat-panel').screenshot({path:'/tmp/supersurfer-chat-tabs-panel.png'});
+  await page.evaluate(()=>document.documentElement.dataset.theme='dark');
+  await page.screenshot({path:'/tmp/supersurfer-chat-tabs-dark.png',fullPage:true});
+  const panel=await page.locator('#chat-panel').boundingBox();assert.ok(panel.width<=400);
+  assert.equal(await page.locator('#chat-panel').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
+  assert.deepEqual(errors,[]);console.log('PASS: visible tabs, keyboard switching, overflow, blank empty chat, drafts, history, archived chat access; no work dispatched');
+ }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

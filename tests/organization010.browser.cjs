@@ -2,7 +2,7 @@
 const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 (async()=>{
- const browser=await chromium.launch({executablePath:'/opt/google/chrome/chrome',headless:true,args:['--no-sandbox']});
+ const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'/opt/google/chrome/chrome',headless:true,args:['--no-sandbox']});
  try{
  const page=await browser.newPage({viewport:{width:1440,height:1100}});page.setDefaultTimeout(10000);
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -32,17 +32,17 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.getByRole('button',{name:'Archive agent chat',exact:true}).click();
  await page.getByRole('button',{name:'Restore chat',exact:true}).waitFor();
  assert.equal(await page.locator('#chat-form').isVisible(),false);
- await page.getByRole('button',{name:'Expand agents section',exact:true}).click();
- assert.equal(await page.locator('.agent-list-row').count(),0);
- await page.getByRole('button',{name:'Archived · 1',exact:true}).click();
- assert.equal(await page.locator('.agent-list-row').count(),1);
+
+ assert.equal(await page.getByRole('tablist',{name:'Chats'}).getByRole('tab').count(),1);
+ await page.getByRole('button',{name:'Show chat history',exact:true}).click();
+ assert.equal(await page.getByRole('tablist',{name:'Chats'}).getByRole('tab').count(),1);
  assert.ok((await page.locator('#chat-session-state').innerText()).includes('monitoring are preserved'));
  assert.equal(calls.filter(c=>c==='chat.stop'||c==='chat.send').length,0);
  await page.reload();await page.getByRole('button',{name:'Restore chat',exact:true}).waitFor();
  await page.getByRole('button',{name:'Restore chat',exact:true}).click();
  await page.getByRole('button',{name:'Archive agent chat',exact:true}).waitFor();
  assert.equal(await page.locator('#chat-form').isVisible(),true);
- assert.equal(await page.getByRole('button',{name:'Archived · 1',exact:true}).count(),0);
+ assert.equal(await page.getByRole('button',{name:'Show chat history',exact:true}).count(),0);
  console.log('PASS archive hides chat, saved history remains accessible, restore survives reload, no stop/send calls');
  await page.locator('[data-view="compute"]').click();
  await page.getByRole('button',{name:'Refresh availability',exact:true}).click();

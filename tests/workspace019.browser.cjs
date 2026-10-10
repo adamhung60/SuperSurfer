@@ -2,7 +2,7 @@
 const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 (async()=>{
- const browser=await chromium.launch({executablePath:'/opt/google/chrome/chrome',headless:true,args:['--no-sandbox']});
+ const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'/opt/google/chrome/chrome',headless:true,args:['--no-sandbox']});
  try{
  const page=await browser.newPage({viewport:{width:1440,height:1100}});page.setDefaultTimeout(10000);
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -30,11 +30,11 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.goto('http://workspace.test/');
  await page.getByText('Does compression preserve action information?',{exact:true}).waitFor();
  assert.equal(await page.getByText('HISTORICAL-NOISE',{exact:true}).isVisible(),false);
- assert.equal(await page.locator('.agent-list-row small').textContent(),'Idle');
+ assert.match(await page.getByRole('tablist',{name:'Chats'}).innerText(),/Idle/);
  assert.equal(await page.locator('#chat-tasks details').getAttribute('open'),null);
  await page.locator('#chat-tasks summary').click();
  await page.getByText('Produce failure videos',{exact:true}).waitFor();
- assert.equal(await page.locator('.agent-list').isVisible(),false);await page.getByRole('button',{name:'Expand agents section',exact:true}).click();assert.equal(await page.locator('.agent-list').isVisible(),true);await page.getByRole('button',{name:'Collapse agents section',exact:true}).click();
+ assert.equal(await page.getByRole('tablist',{name:'Chats'}).isVisible(),true);assert.equal(await page.getByRole('tablist',{name:'Chats'}).isVisible(),true);
  console.log('PASS compact brief, separate technical history, task progress and persistent Idle agent');
  await page.getByRole('button',{name:'Rename agent',exact:true}).click();
  await page.getByLabel('Agent name',{exact:true}).fill('E12 failure analysis');
@@ -42,7 +42,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.waitForFunction(()=>document.querySelector('#chat-name').textContent==='E12 failure analysis');
  taskStatus='completed';await page.getByRole('button',{name:'Refresh connection',exact:true}).click();
  await page.getByText('Playback verified.',{exact:true}).waitFor();
- assert.equal(await page.locator('.agent-list-row small').textContent(),'Idle');
+ assert.match(await page.getByRole('tablist',{name:'Chats'}).innerText(),/Idle/);
  console.log('PASS rename persists through refresh; completed deliverable does not finish conversation');
  await page.getByRole('button',{name:'Method details',exact:true}).click();
  await page.getByRole('heading',{name:'Architecture',exact:true}).waitFor();
