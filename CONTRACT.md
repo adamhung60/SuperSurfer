@@ -898,3 +898,18 @@ provider-native rules; permitted workspace edits may run without a callback. CLI
 recognized events; raw stdout/stderr and auth output are not logged. Restart and
 unknown delivery never replay prompts. Exact-turn steering and complete patch
 attribution are not advertised for Cursor/Claude.
+
+### Conversation tabs
+
+The chat panel exposes current scoped conversations as horizontally scrollable tabs. Left/Right and Home/End switch tabs; each conversation retains its draft and attachments. Selecting a tab does not start, resume, or stop work. Previous and archived conversations are available through Show chat history; the selected archived conversation stays visible and offers Restore. Empty chats show the composer without promotional copy or suggested prompts.
+
+### Persistent local Mac identity
+
+Packaging reuses the configured certificate fingerprint from the current Mac's
+user profile across independent source snapshots. Setup is explicit and never
+triggered by packaging: it adds a private signing key to the default user Keychain
+and user-level trust for the code-signing policy only. It changes no TLS trust,
+TCC permissions, system trust, or Gatekeeper setting. A configured identity that
+is unavailable or invalid fails closed rather than reverting to ad-hoc signing.
+Unconfigured development packaging retains its ad-hoc fallback. Installation and
+restart still require the existing user action and native confirmation.

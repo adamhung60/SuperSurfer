@@ -422,3 +422,7 @@ Ongoing list of requested improvements. Unchecked items are planned, not impleme
 are complete; keep native macOS launch/Gatekeeper as the remaining packaging check.
 Cursor ACP does not expose usage receipts, and listed model IDs may be plan-restricted.
 Native multi-select questions currently direct the agent to scoped ask_user.
+
+- [x] Replace the collapsible chat agent directory with keyboard-accessible conversation tabs; remove empty-chat filler and preserve drafts/history.
+
+- [x] Reuse an explicitly configured Mac signing certificate across local updates; verify identical designated requirements for different signed builds.

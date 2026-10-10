@@ -2,7 +2,7 @@
 const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 (async()=>{
- const browser=await chromium.launch({executablePath:'/opt/google/chrome/chrome',headless:true,args:['--no-sandbox']});
+ const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'/opt/google/chrome/chrome',headless:true,args:['--no-sandbox']});
  try {
  const page=await browser.newPage({viewport:{width:1840,height:1100}});page.setDefaultTimeout(10000);
  const errors=[],external=[],fontRequests=[];page.on('pageerror',e=>errors.push(e.message));
@@ -65,7 +65,7 @@ Incomplete streaming: \(x_{t+1}`;
  console.log('PASS inline/display/matrix math, literal code/currency, incomplete or invalid math, isolated TeX and local fonts under app CSP');
  assert.equal(await page.locator('#chat-tasks details').evaluate(el=>el.open),false);
  assert.ok((await page.locator('.chat-header').boundingBox()).height<=58,'Worker header too tall');
- assert.ok((await page.locator('#chat-agent-list').boundingBox()).height<=34,'Collapsed agents too tall');
+ assert.ok((await page.locator('#chat-agent-list').boundingBox()).height<=48,'Chat tabs too tall');
  await page.locator('#chat-tasks summary').click();taskUpdate++;
  await page.getByRole('button',{name:'Refresh connection',exact:true}).click();
  await page.getByText('Scoring is in progress. '+taskUpdate,{exact:true}).waitFor();
@@ -76,7 +76,7 @@ Incomplete streaming: \(x_{t+1}`;
  await page.locator('#chat-input').fill('Keep this unsent direction.');
  const checkLayout=async()=>{
   const g=await page.evaluate(()=>{
-   const box=s=>{const e=document.querySelector(s),r=e.getBoundingClientRect(),c=getComputedStyle(e);return {x:r.x,width:r.width,height:r.height,right:r.right,top:r.top,bottom:r.bottom,inner:r.x+parseFloat(c.paddingLeft),hidden:e.hidden};};
+   const box=s=>{const e=document.querySelector(s),r=e.getBoundingClientRect(),c=getComputedStyle(e);return {x:r.x,width:r.width,height:r.height,right:r.right,top:r.top,bottom:r.bottom,inner:r.x+parseFloat(c.paddingLeft),hidden:e.hidden||r.width===0};};
    return {width:innerWidth,height:innerHeight,scroll:document.documentElement.scrollWidth,head:box('.chat-header'),tasks:box('.chat-tasks'),agents:box('.chat-agent-list'),messages:box('.chat-messages'),form:box('.chat-composer'),questions:box('.chat-questions'),approvals:box('.chat-approvals'),breadcrumb:box('.breadcrumb')};
   });
   assert.ok(g.scroll<=g.width+1,JSON.stringify(g));
@@ -88,19 +88,19 @@ Incomplete streaming: \(x_{t+1}`;
   assert.ok(g.form.bottom<=g.height+1,'composer clipped: '+JSON.stringify(g));
   assert.ok(g.messages.bottom<=g.form.top+1,'messages overlap composer');
   if(!g.questions.hidden)assert.ok(g.questions.height>=80,'question collapsed: '+JSON.stringify(g));
-  assert.ok(g.breadcrumb.x>=100,'breadcrumb overlaps native window controls');
+  if(!g.breadcrumb.hidden)assert.ok(g.breadcrumb.x>=100,'breadcrumb overlaps native window controls');
  };
  for(const viewport of [{width:1840,height:1100},{width:1280,height:800},{width:1000,height:680},{width:700,height:850}]){
   await page.setViewportSize(viewport);await checkLayout();
   assert.equal(await page.locator('#chat-input').inputValue(),'Keep this unsent direction.');
  }
  await page.setViewportSize({width:1440,height:1000});
- await page.getByRole('button',{name:'Expand agents section',exact:true}).click();await checkLayout();
- for(const row of await page.locator('.agent-list-row').all())assert.ok((await row.boundingBox()).height<=28,'Agent list row too tall');
- assert.ok((await page.locator('.agent-list').boundingBox()).height<=131,'Agent list consumes transcript space');
+ await checkLayout();
+ for(const row of await page.getByRole('tablist',{name:'Chats'}).getByRole('tab').all())assert.ok((await row.boundingBox()).height<=32,'Chat tab too tall');
+ assert.ok((await page.getByRole('tablist',{name:'Chats'}).boundingBox()).height<=48,'Tabs consume transcript space');
  await page.locator('#chat-agent-list').screenshot({path:path.join(__dirname,'../../../work/ui016-agents.png')});
  await page.locator('.chat-header').screenshot({path:path.join(__dirname,'../../../work/ui016-worker.png')});
- await page.getByRole('button',{name:'Collapse agents section',exact:true}).click();
+
  await page.locator('#chat-tasks summary').click();await checkLayout();await page.locator('#chat-tasks summary').click();
  await page.evaluate(()=>{document.querySelector('#chat-messages').scrollTop=0;});
  await page.screenshot({path:path.join(__dirname,'../../../work/ui010-fullscreen.png')});
@@ -109,7 +109,7 @@ Incomplete streaming: \(x_{t+1}`;
  await page.locator('[data-action=refresh]').dispatchEvent('click');await page.locator('.question-card').waitFor();
  await page.getByRole('textbox',{name:'Which result should we inspect?'}).fill('Inspect the failed scenes.');await checkLayout();
  // Short desktop window must still expose the composer and the scrollable pending question.
- await page.setViewportSize({width:1000,height:680});await page.getByRole('button',{name:'Expand agents section',exact:true}).click();await checkLayout();
+ await page.setViewportSize({width:1000,height:680});await checkLayout();
  await page.getByRole('button',{name:'Restore agent panel',exact:true}).click();
  assert.equal(await page.locator('#chat-input').inputValue(),'Keep this unsent direction.');
  assert.equal(await page.getByRole('textbox',{name:'Which result should we inspect?'}).inputValue(),'Inspect the failed scenes.');

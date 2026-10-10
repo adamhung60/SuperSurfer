@@ -917,3 +917,18 @@ node-onboarding failure because this host lacks
 `python3.12-venv`. The isolated Codex attachment test reproduced the same
 error. Mac packaging and native restart were not run on this Linux host; the
 feature is not installed in the user's current Mac app.
+
+## Conversation tabs and persistent local signing — 2026-10-10
+
+- `node scripts/check-chat-tabs.cjs`: passed (syntax, browser behavior, capability skills and whitespace). Covers visible tabs, keyboard navigation, overflow at 350px, blank transcript, separate drafts, archived history and no work dispatch on selection.
+- Browser checks passed: `chat010.browser.cjs`, `workspace019.browser.cjs`, `organization010.browser.cjs`, `wakeups.browser.cjs`. The shared checkout's newer `customize.browser.cjs` also passed with tab navigation and New chat behavior.
+- `editor-panels.browser.cjs` was unavailable: its external `workflow-playground/sample-paper.pdf` and Linux Code OSS fixtures are absent on this Mac. Legacy collapse assertions were updated to visible tabs.
+- Five signing unit tests passed. Explicit local signing setup was approved and completed; private material stays in the user's Keychain and only a public fingerprint is saved outside the checkout.
+- `node tests/mac-signing.native.cjs`: two different real Mac test bundles passed strict verification with identical certificate-backed designated requirements. This tests signing continuity, not an actual TCC/App Management grant.
+- `TMPDIR=/private/tmp node --test tests/*.test.cjs`: 43 passed, five skipped before the fifth signing test was added; all five signing tests subsequently passed.
+- Full `npm test` attempted. With canonical `TMPDIR=/private/tmp`, 715 Python tests ran: seven node-workflow failures because macOS rsync lacks `--protect-args`, one pre-existing Codex fixture startup timeout, and 34 skips. The timeout reproduced alone. No server/provider implementation changed in this branch. The first run also encountered `/var` versus `/private/var` path assumptions.
+- `npm run package:mac`: passed on Apple Silicon, Electron 44.5.1, SuperSurfer 0.1.40. Outputs: `dist/SuperSurfer-darwin-arm64/SuperSurfer.app` and `dist/SuperSurfer-0.1.40-mac-arm64.zip`. Packaging warned that `desktop/icon.icns` is absent.
+- `node tests/mac-package.electron.cjs`: original and ZIP-extracted bundles passed strict signature, isolated-profile launch and renderer-sandbox checks. Standalone strict codesign verification passed; the requirement uses a persistent certificate instead of cdhash. Extended attributes inspected; no quarantine attribute. Local signing is not Developer ID signing or notarization.
+- Board commands were unconfigured; no successful board receipt is claimed. User waived the running preview. No installed app was replaced or restarted.
+
+Diagnostics: not applicable — requested presentation and local signing improvements, not a live workspace failure.
