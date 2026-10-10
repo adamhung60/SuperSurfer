@@ -77,3 +77,5 @@ xattr -dr com.apple.quarantine "/Applications/SuperSurfer.app"
 Reopen the app. This clears its download quarantine; it does not sign or notarize it.
 
 [Agent contribution guide](.agents/README.md) · [More details](CONTRACT.md) · [Roadmap](TODO.md)
+
+The notification bell shows approvals, questions, task completions and review requests across owned chats. On macOS, Voice settings offers separate editable voice lines and sound toggles for each category, a preview and global mute. Alerts use Daniel, a British male system voice. Settings and read receipts stay on the Mac; alerts require an open, connected app.

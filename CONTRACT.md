@@ -902,3 +902,7 @@ provider-native rules; permitted workspace edits may run without a callback. CLI
 recognized events; raw stdout/stderr and auth output are not logged. Restart and
 unknown delivery never replay prompts. Exact-turn steering and complete patch
 attribution are not advertised for Cursor/Claude.
+
+## Notification inbox and voice alerts
+
+Owned conversation summaries expose pending approvals/questions, completed deliverables, blocked/required-review tasks, and published Results reports without starting provider turns. The minibar bell opens an actionable inbox. Initial snapshots (including newly connected hosts) load quietly; new events speak once per category per polling batch. Resolved decisions disappear. Read receipts and per-category voice preferences persist locally across desktop origins/restarts. Sound does not answer questions or grant approvals. macOS speech uses fixed Daniel through stdin, validates plain-text lines and rate, queues alerts and deduplicates across windows. Native IPC requires a trusted main frame. Browser clients show the inbox but voice playback requires the Mac app. Native AutoML-owned conversations do not expose these owned task/question receipts.

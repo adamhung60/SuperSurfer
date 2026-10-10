@@ -921,3 +921,35 @@ node-onboarding failure because this host lacks
 `python3.12-venv`. The isolated Codex attachment test reproduced the same
 error. Mac packaging and native restart were not run on this Linux host; the
 feature is not installed in the user's current Mac app.
+
+## Custom notification inbox and British voice lines
+
+The bell offers per-category editable Daniel voice lines, toggles, previews, speed,
+global mute and persisted read receipts. Owned pending approvals/questions,
+completed deliverables, blocked/required-review tasks and Results reports reach the
+inbox without provider inference. The shared customization includes multi-host
+notification aggregation and routing for alerted conversations.
+
+Verification on Apple Silicon macOS:
+- Five focused Python notification tests passed, including a real isolated stdio
+  bridge receipt without another provider turn.
+- Notification model/native speech unit tests passed. Browser regression passed
+  all alert categories, custom line save/preview, polling draft retention,
+  unread/navigation, mute and reload; Electron regression passed persisted IPC,
+  validation and untrusted-origin rejection. Multi-host routing tests passed.
+- Node suite: focused branch 41 passed, 5 optional SSH skips; combined shared
+  source 44 passed, 5 skipped. Skill checker and diff check passed.
+- Full Python suite: 720 tests, 7 failures, 1 error, 34 skipped. The same seven
+  rsync --protect-args failures and Codex initialization timeout reproduced in
+  clean origin/main (13 baseline tests). No full-suite pass is claimed.
+- `npm run package:mac` produced the combined shared
+  `dist/SuperSurfer-0.1.40-mac-arm64.zip`. Original and ZIP-extracted apps passed
+  strict signatures and isolated-profile sandbox/setup launches. Delivered runtime
+  file hashes match shared source. Local signing is ad hoc, without notarization.
+- Daniel generated a 1.42-second AIFF sample without live sound playback.
+  Screenshot and voice preview are project artifacts. Board checks/preview have
+  no configured command, so no board check pass is claimed.
+
+No installation or running-app restart occurred. Voice alerts require the open,
+connected Mac app and available Daniel system voice; native AutoML-owned histories
+lack the owned notification receipts.
