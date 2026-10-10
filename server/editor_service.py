@@ -58,7 +58,7 @@ class EditorService:
                 "version": saved["version"], "board_version": record["version"],
                 "overridden": saved.get("rows") is not None or saved.get("pages") is not None,
                 "rows_overridden": saved.get("rows") is not None, "pages_overridden": saved.get("pages") is not None,
-                "hidden_tabs": self.store.get("hidden_view_tabs:" + project_id + ":" + (experiment_id or ""), []),
+                "hidden_tabs": self.store.get("hidden_view_tabs:" + project_id + ":" + (experiment_id or ""), ["_todos"]),
                 "rows": compile_layouts(definition)[level], "available": available,
                 "pages": compile_pages(definition)[level], "available_tiles": available_tiles}
 
@@ -79,7 +79,7 @@ class EditorService:
             raise SurfboardError("Remove configured pages through the versioned view layout")
         key = "hidden_view_tabs:" + project_id + ":" + (experiment_id or "")
         with self.store.lock:
-            hidden = set(self.store.get(key, []))
+            hidden = set(self.store.get(key, ["_todos"]))
             if params["hidden"]:
                 hidden.add(tab)
             else:

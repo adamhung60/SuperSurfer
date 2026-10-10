@@ -19,6 +19,11 @@ def coding_page():
 
 
 class SurfboardPagesTests(unittest.TestCase):
+    def test_research_details_are_available_without_default_document_page(self):
+        board = template("research")
+        self.assertNotIn("documents", [page["id"] for page in compile_pages(board)["item"]])
+        self.assertIn("documents", [tile["kind"] for tile in tile_catalog(board, "item")])
+
     def test_absent_pages_derive_existing_main_views_without_migrating_board(self):
         for workflow in ("research", "software", "web"):
             board = template(workflow)

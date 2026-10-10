@@ -401,6 +401,13 @@ def _board_tool(name, description, properties, required=()):
     return {"name": name, "description": description, "inputSchema": {"type": "object", "additionalProperties": False,
             "properties": properties, "required": list(required)}}
 
+EXTERNAL_RUN_FIELDS = {"source_id":{"type":"string","minLength":1,"maxLength":150},
+    "source_label":{"type":"string","minLength":1,"maxLength":150},
+    "observed_at":{"type":"number","minimum":0},
+    "runs":{"type":"array","maxItems":256,"items":{"type":"object","additionalProperties":True}}}
+EXTERNAL_RUN_TOOL = _board_tool("publish_external_runs", "Save a bounded read-only observation of jobs launched outside SuperSurfer for this experiment's Runs page. Supply stable source/job IDs, real status, host/GPU, step/timing and health evidence. A snapshot never creates or controls an AutoML run. Reuse the same source and omit unverified values; stale snapshots are rejected. Scheduled monitoring may update observations under the user's saved wakeup.", EXTERNAL_RUN_FIELDS, list(EXTERNAL_RUN_FIELDS))
+PROJECT_EXTERNAL_RUN_TOOL = _board_tool("publish_external_runs", EXTERNAL_RUN_TOOL["description"], {**EXTERNAL_RUN_FIELDS,"experiment_id":{"type":"string","minLength":1,"maxLength":180}}, [*EXTERNAL_RUN_FIELDS,"experiment_id"])
+
 _PROJECT = {"project_id": {"type": "string", "maxLength": 150, "description": "Manager only; other scopes already select their project."}}
 READ_BOARD_TOOL = _board_tool("read_surfboard", "Read the task graph, draft, versions and capabilities. Workers read their own task. Leads/managers select experiment_id, or omit it for the project default used by new tasks. Project compute resources remain shared.", {**_PROJECT, "experiment_id": {"type":"string", "maxLength":180}})
 _LAYOUT_SCOPE = {**_PROJECT, "experiment_id": {"type": "string", "maxLength": 180, "description": "Lead/manager: select one work item, or omit for the project page. Workers are fixed to their own item."}}
@@ -445,6 +452,7 @@ BLOCK_LIST_TOOL = _board_tool("list_view_blocks", "List the workspace's explicit
 BLOCK_PUBLISH_TOOL = _board_tool("publish_view_block", "Publish a persistent reusable HTML block for user-requested work. HTML uses relative declared assets copied from the owned project; safe regular files only. Omit assets on a revision to preserve copied media; explicit assets replaces the set. Provide id/version to revise an existing block from this project. Place it using update_view_layout with kind html and block_id. No source writes, execution authority, app credentials or external sharing.", {**_PROJECT,"id":{"type":"string"},"version":{"type":"integer","minimum":0},"title":{"type":"string","maxLength":100},"html":{"type":"string","maxLength":1048576},"assets":{"type":"object","additionalProperties":{"type":"string"},"maxProperties":32}}, ["title","html"])
 for _role, _tools in ROLE_TOOLS.items():
     _tools.extend([BLOCK_LIST_TOOL, BLOCK_PUBLISH_TOOL, READ_BOARD_TOOL, READ_LAYOUT_TOOL, UPDATE_LAYOUT_TOOL, PRESENT_CODE_TOOL, TODOS_TOOL, DATA_BOARD_TOOL, ACTION_BOARD_TOOL, LATEX_TOOL, ARTIFACT_LIST_TOOL, ARTIFACT_PUBLISH_TOOL, ACTIVITY_TOOL, DIAGNOSTICS_TOOL])
+    _tools.append(EXTERNAL_RUN_TOOL if _role == "worker" else PROJECT_EXTERNAL_RUN_TOOL)
     if _role in {"lead", "manager"}:
         for _old, _new in [("create_experiment", "create_work_item"), ("create_experiment_agent", "create_work_item_agent"), ("handoff_experiment", "handoff_work_item"), ("update_experiment", "update_work_item")]:
             _original = next((tool for tool in _tools if tool["name"] == _old), None)

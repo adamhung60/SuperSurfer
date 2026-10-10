@@ -26,11 +26,12 @@ class ViewLayoutToolTests(unittest.TestCase):
     def test_removing_utility_and_markdown_tabs_is_scoped_and_preserves_content(self):
         note = self.service.results.publish_page(self.exp['id'], {'title': 'Protocol', 'markdown': '# Evidence\nMeasured results.'})
         scope = {'project_id': 'p1', 'experiment_id': self.exp['id']}
+        self.assertIn('_todos', self.read('experiment:'+self.exp['id'])['hidden_tabs'])
         for tab in ('_todos', 'page:' + note['id']):
             value = self.service.action('view-tab.hide', {**scope, 'tab': tab, 'hidden': True})
             self.assertIn(tab, value['hidden_tabs'])
         self.assertEqual('# Evidence\nMeasured results.', self.service.results.page(self.exp['id'], note['id'])['markdown'])
-        self.assertEqual([], self.service.view_layout('p1')['hidden_tabs'])
+        self.assertEqual(['_todos'], self.service.view_layout('p1')['hidden_tabs'])
         restored = self.service.action('view-tab.hide', {**scope, 'tab': '_todos', 'hidden': False})
         self.assertNotIn('_todos', restored['hidden_tabs'])
         for tab in ('page:foreign', 'overview', {}):
