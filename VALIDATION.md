@@ -978,3 +978,19 @@ completed, and `node tests/mac-package.electron.cjs` passed strict signatures
 and isolated launches of both the app bundle and ZIP-extracted app. Installation
 and live restarts were not performed. The board check node still has no configured
 command, so no board receipt is claimed.
+
+## Combined projects across remote hosts — 2026-10-10
+
+The user clarified that several remote machines should be available together in
+one window. The desktop retains each SSH service connection, combines their
+project, experiment, agent and run records, and adds a machine selector to Add a
+project. Project-scoped API calls and uploads route through the owning service;
+new projects can target any connected host. SSH setup returns to the existing
+workspace window with the project draft intact. Connections last for the app
+window; after reopening, other SSH hosts must be connected again. Workspace-wide
+settings remain those of the active service.
+
+`node --test tests/project-routing.test.cjs` passed both aggregation and routing
+tests. The remote-project browser test passed draft restoration, remote host
+selection and goal-free creation. The Electron test passed same-window setup
+and trusted IPC checks. `TMPDIR=/private/tmp node --test tests/*.test.cjs` passed 41 with 5 SSH fixture tests skipped; running without the canonical TMPDIR exposed the known `/var` versus `/private/var` path assertion. Syntax checks, the capability-skill checker, and `git diff --check` passed. `npm run package:mac` built darwin-arm64 and `node tests/mac-package.electron.cjs` passed strict signatures and isolated launches for the original app and ZIP-extracted app. Artifact: `/private/tmp/supersurfer-remote-project/dist/SuperSurfer-0.1.40-mac-arm64.zip`. No real SSH host was connected. No installation or running-app restart occurred.

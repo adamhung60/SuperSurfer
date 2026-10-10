@@ -2,6 +2,7 @@
 const { app, BrowserWindow, ipcMain, Menu, shell, session, nativeTheme, dialog, screen } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const { createHash } = require('node:crypto');
 const { pathToFileURL } = require('node:url');
 const { connect, validateConfig } = require('./connection.cjs');
 const { knownHosts } = require('./hosts.cjs');
@@ -10,9 +11,10 @@ const themes = require('./themes.cjs');
 const { createCustomize } = require('./customize.cjs');
 const { workspacePreference } = require('./preferences.cjs');
 const { WindowStore, configKey, windowLabel } = require('./windows.cjs');
+const { resolveWorkspaceConnection, mergeWorkspaceStates } = require('./project-routing.cjs');
 const windows = new Map(), panelWindows = new Map();
 const contexts=()=>[...windows.values(),...panelWindows.values()];
-const releaseConnection=(connection)=>{if(connection&&!contexts().some(row=>row.connection===connection))connection.child?.kill();};
+const releaseConnection=(connection)=>{if(connection&&!contexts().some(row=>row.connection===connection||row.connections?.has(connection.hostId)))connection.child?.kill();};
 let store, customize, shuttingDown = false;
 const setupPath = path.join(__dirname, 'setup.html');
 const setupUrl = pathToFileURL(setupPath).href;
@@ -35,6 +37,29 @@ function focused() { return [...windows.values()].find(item => item.window === B
 function sendStatus(context, phase, message) {
   context.status = {phase,message};
   if (!context.window.isDestroyed()) context.window.webContents.send('connection-status', context.status);
+}
+function hostId(config) { return 'host_' + createHash('sha256').update(configKey(config)).digest('hex').slice(0,16); }
+function workspaceContext(context) { return context?.parentPanel ? context.parent : context; }
+function connectionsOf(context) { return [...(context.connections?.values() || [])]; }
+async function workspaceApi(context, pathAndQuery, body) {
+  const root=workspaceContext(context),{route,connection:selected}=resolveWorkspaceConnection(root,pathAndQuery,body);
+  if(!selected)throw new Error('Connect a workspace before using its projects.');
+  if(route.pathname==='/api/state'){
+    const connections=connectionsOf(root),states=await Promise.all(connections.map(async connection=>{
+      const response=await fetch(connection.origin+'/api/state',{headers:{Authorization:'Bearer '+connection.token}});
+      const data=await response.json();if(!response.ok)throw new Error(data.error||'Workspace state request failed.');return data;
+    }));
+    return mergeWorkspaceStates(root,connections,states);
+  }
+  const headers={Authorization:'Bearer '+selected.token,Accept:'application/json'},options={method:body===undefined?'GET':'POST',headers};
+  if(body!==undefined){headers['Content-Type']='application/json';options.body=JSON.stringify(body);}
+  const response=await fetch(selected.origin+route.pathname+route.search,options);let data;
+  try{data=await response.json();}catch{throw new Error(`Workspace service returned ${response.status}.`);}
+  if(!response.ok){const error=new Error(data.error||`Request failed (${response.status})`);error.status=response.status;throw error;}
+  if(body?.op==='project.add'){const project=data.project||data;if(project?.id)root.projectOwners?.set(project.id,selected);}
+  if(body?.op==='experiment.create'){const experiment=data.experiment||data;if(experiment?.id)root.experimentOwners?.set(experiment.id,selected);}
+  if(body?.op==='chat.create'&&data?.experiment_id)root.experimentOwners?.set(data.experiment_id,selected);
+  return data;
 }
 function saveWindow(context) {
   if (context.window.isDestroyed()) return;
@@ -66,17 +91,28 @@ async function connectWindow(context, raw) {
     if(context.connection&&configKey(context.connection.config)!==configKey(config)&&[...panelWindows.values()].some(row=>row.parent===context))throw new Error('Close this workspace’s separate panels before changing its host, or use New Window for the other host.');
     sendStatus(context, 'connecting', `Connecting to ${config.mode === 'local' ? 'this machine' : config.target}…`);
     next = await connect(config, message => sendStatus(context, 'connecting', message), {signal:attempt.signal});
+    next.hostId=hostId(next.config);
     if (attempt.signal.aborted || context.attempt !== attempt || context.window.isDestroyed()) { next.child?.kill();return {error:'Connection cancelled.'}; }
+    if(context.addProject&&context.connection){
+      context.connections ||= new Map([[context.connection.hostId||hostId(context.connection.config),context.connection]]);
+      const existing=context.connections.get(next.hostId);if(existing){next.child?.kill();next=existing;}else context.connections.set(next.hostId,next);
+      context.projectOwners ||= new Map();context.experimentOwners ||= new Map();context.runOwners ||= new Map();
+      context.projectDraft={...(context.projectDraft||{}),workspace_host_id:next.hostId};context.addProject=false;
+      sendStatus(context,'connected','Remote machine connected in this window.');await context.window.loadURL(context.connection.origin+'/?add_project=1');
+      next.child?.once('exit',()=>{if(context.connections?.get(next.hostId)===next){context.connections.delete(next.hostId);sendStatus(context,'error',`Connection to ${next.config.target} was lost. Reconnect this machine before opening its projects.`);}});
+      return {ok:true};
+    }
     const changedHost = context.record.config && configKey(context.record.config) !== configKey(next.config);
     if (changedHost) await context.window.webContents.session.clearStorageData();
     attempt.signal.throwIfAborted();
     store.connected(context.record, next.config);
-    const previous = context.connection;context.connection = next;releaseConnection(previous);for(const panel of panelWindows.values())if((panel.parent===context||panel.parent.window.isDestroyed()&&panel.parent.record.id===context.record.id)&&configKey(panel.hostConfig)===configKey(next.config)){panel.parent=context;panel.connection=next;const url=new URL(panel.window.webContents.getURL());void panel.window.loadURL(next.origin+'/'+url.search);}releaseConnection(previous);
+    const previous = context.connection;context.connection = next;context.connections ||= new Map();context.connections.set(next.hostId,next);context.projectOwners ||= new Map();context.experimentOwners ||= new Map();context.runOwners ||= new Map();releaseConnection(previous);for(const panel of panelWindows.values())if((panel.parent===context||panel.parent.window.isDestroyed()&&panel.parent.record.id===context.record.id)&&configKey(panel.hostConfig)===configKey(next.config)){panel.parent=context;panel.connection=next;const url=new URL(panel.window.webContents.getURL());void panel.window.loadURL(next.origin+'/'+url.search);}releaseConnection(previous);
     context.window.setTitle(windowLabel(context.record) + ' — SuperSurfer');updateMenu();
     next.child?.once('exit', () => {
       for(const panel of panelWindows.values())if(panel.connection===next){panel.connection=null;sendStatus(panel,'error','Connection lost. The panel and remote work are preserved. Reopen the same host to reconnect.');}
       if (context.connection !== next || shuttingDown || context.window.isDestroyed()) return;
       context.connection = null;
+      context.connections?.delete(next.hostId);
       sendStatus(context, 'error', 'Connection lost. Your remote work is still running.');
       if (!context.editing) {
         if (context.attempt) context.restoreAfterAttempt=true;
@@ -115,7 +151,7 @@ function makeWindow(record = store.create(), {addProject=false} = {}) {
   const partition = session.fromPartition('persist:workspace-'+record.id);
   const window = new BrowserWindow({width:1480,height:940,...visibleBounds(record.bounds),minWidth:1000,minHeight:680,title:windowLabel(record)+' — SuperSurfer',backgroundColor:nativeTheme.shouldUseDarkColors?'#1c201c':'#f8f8f6',titleBarStyle:'hiddenInset',trafficLightPosition:{x:18,y:20},show:false,
     webPreferences:{preload:path.join(__dirname,'preload.cjs'),session:partition,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
-  const context = {window,record,connection:null,attempt:null,status:{phase:'idle',message:''},restoreRequested:false,editing:true,addProject,projectDraft:null};
+  const context = {window,record,connection:null,connections:new Map(),projectOwners:new Map(),experimentOwners:new Map(),runOwners:new Map(),attempt:null,status:{phase:'idle',message:''},restoreRequested:false,editing:true,addProject,projectDraft:null};
   windows.set(record.id,context);
   partition.setPermissionRequestHandler((_contents,_permission,callback) => callback(false));
   partition.webRequest.onBeforeSendHeaders((details,callback) => {
@@ -146,7 +182,7 @@ function makeWindow(record = store.create(), {addProject=false} = {}) {
   window.on('close', () => { clearTimeout(geometryTimer);saveWindow(context); });
   window.on('closed', () => {
     if (!shuttingDown) { record.open=false;store.save(); }
-    windows.delete(record.id);context.attempt?.abort();releaseConnection(context.connection);
+    windows.delete(record.id);context.attempt?.abort();for(const connection of connectionsOf(context))releaseConnection(connection);
     if(!contexts().some(row=>row.window.webContents.session===partition))partition.webRequest.onBeforeSendHeaders(null);if (!shuttingDown) updateMenu();
   });
   void showSetup(context, !!record.config);updateMenu();return context;
@@ -208,6 +244,19 @@ else {
     ipcMain.handle('provider:login',(event,backend)=>{const context=ownWindow(event);if(!context.connection)throw new Error('Connect a workspace first.');return openProviderLogin(context.connection.config,backend);});
     ipcMain.handle('port:open',(event,fields)=>openPort(ownWindow(event),fields));
     ipcMain.handle('panel:open',(event,fields)=>openPanel(ownWindow(event),fields));
+    ipcMain.handle('workspace:api',(event,pathAndQuery,body)=>workspaceApi(ownWindow(event),pathAndQuery,body));
+    ipcMain.handle('workspace:upload',async(event,projectId,name,uploadId,bytes)=>{
+      const context=workspaceContext(ownWindow(event)),connection=context.projectOwners?.get(projectId);
+      if(!connection||typeof name!=='string'||name.length>255||typeof uploadId!=='string'||!/^[a-f0-9]{32}$/.test(uploadId)||!(bytes instanceof ArrayBuffer)||bytes.byteLength>32*1024*1024)throw new Error('Invalid project upload.');
+      const query=new URLSearchParams({project_id:projectId,name,upload_id:uploadId}),response=await fetch(connection.origin+'/api/upload?'+query,{method:'POST',headers:{Authorization:'Bearer '+connection.token,'Content-Type':'application/octet-stream'},body:new Uint8Array(bytes)});
+      const data=await response.json();if(!response.ok)throw new Error(data.error||'Upload failed.');return data;
+    });
+    ipcMain.handle('workspace:pdf',async(event,projectId,relativePath)=>{
+      const context=workspaceContext(ownWindow(event)),connection=context.projectOwners?.get(projectId);
+      if(!connection||typeof relativePath!=='string'||relativePath.length>4096||relativePath.startsWith('/')||relativePath.split('/').some(part=>!part||part==='.'||part==='..'))throw new Error('Invalid project PDF request.');
+      const query=new URLSearchParams({project_id:projectId,path:relativePath}),response=await fetch(connection.origin+'/api/code/pdf?'+query,{headers:{Authorization:'Bearer '+connection.token}});
+      if(!response.ok)throw new Error(`PDF could not be opened (${response.status}). Check its repository path.`);const bytes=await response.arrayBuffer();if(bytes.byteLength>64*1024*1024)throw new Error('PDF exceeds the 64 MiB viewing limit.');return bytes;
+    });
     ipcMain.handle('project:remote',(event,draft) => {
       const context=ownWindow(event);
       if(!draft||typeof draft!=='object'||Array.isArray(draft)||Object.keys(draft).some(key=>!['name','repo','surfboard_template'].includes(key)))throw new Error('Invalid project draft.');
@@ -250,7 +299,7 @@ else {
   });
   app.on('before-quit',() => {
     shuttingDown=true;
-    for (const context of windows.values()) { saveWindow(context);context.attempt?.abort();context.connection?.child?.kill(); }
+    for (const context of windows.values()) { saveWindow(context);context.attempt?.abort();for(const connection of connectionsOf(context))connection.child?.kill(); }
   });
   app.on('window-all-closed',() => { if (process.platform !== 'darwin') app.quit(); });
 }
