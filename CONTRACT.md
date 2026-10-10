@@ -4,7 +4,11 @@
 
 The app workshop is a top-level view, separate from research project pages. It
 lists only workspace projects whose repository contains the SuperSurfer source
-layout and uses that project's agent conversation. Source recognition adds
+layout. Its main-page idea field sends to the selected project's lead conversation;
+draft text stays with the selected project across page rerenders. A running
+configured preview action for that project is embedded on the main page in a
+sandboxed frame, with an explicit refresh. The preview is optional and does not
+install source changes. Source recognition adds
 app-specific agent guidance; it does not grant installation or broader tools.
 The workspace checkout can be remote. The desktop client requests an authenticated,
 bounded snapshot of its saved and unignored source files, then builds that copy

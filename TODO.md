@@ -4,6 +4,7 @@
 - [ ] Verify a native Mac build, bundle replacement and reopened app on an isolated installation.
 - [ ] Add post-launch health acknowledgement and one-click recovery from a retained backup.
 - [x] Transfer saved source from the selected workspace checkout to the Mac build.
+- [x] Put idea entry and configured running visual previews in the Customize main page.
 
 # Completed in 0.1.40
 
