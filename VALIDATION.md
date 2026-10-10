@@ -1,3 +1,38 @@
+# Separate coding chats, Customize install and message resends — October 10, 2026
+
+The final ordinary suite passes: **722 Python tests** (34 optional skips) and
+**40 Node tests** (5 optional SSH skips). It runs with canonical
+`TMPDIR=/private/tmp` and an isolated conda-forge rsync on PATH; the macOS system
+rsync lacks `--protect-args`. The timeout regression warms its fixture process
+before measuring the 150 ms turn deadline, preserving the no-replay assertion.
+The account browser fixture now subscribes to process exit before shutting down,
+so Codex, Cursor and Claude cases all actually complete.
+
+Focused checks pass: two real-service chat-creation tests, six native Customize
+unit tests, the edit/resend browser fixture and the streamlined Customize browser
+fixture. Four isolated real-process service-upgrade tests pass for preserving
+history/token, startup rollback, mismatched identity rejection and stop timeout
+without competing processes. Installer tests cover absent/wrong/native bundle
+grants; a Node test checks exact host/state/manager/port and bundle binding,
+expiry and one-use consumption. These checks are included in the task board
+check command. They cover distinct and idempotent chat creation without inference,
+separate idea scopes, retained drafts/history/attachments, polling-safe editing,
+failed sends, busy/approval/read-only states, direct New chat, and build-before-
+install with cancellation/error handling. Provider browser fixtures use simulated
+protocols, not paid inference or real OAuth. Light/dark and narrow layouts were
+inspected. Agent skill validation and `git diff --check` pass.
+
+The approved task board records a successful focused check receipt and a running
+preview embedded in Customize SuperSurfer. This preview serves the actual changed
+UI with isolated sample data; its send and install actions are explicitly
+simulated. The source project stays registered internally, hidden from Projects.
+
+`npm run package:mac` produces `dist/SuperSurfer-darwin-arm64/SuperSurfer.app`
+and `dist/SuperSurfer-0.1.40-mac-arm64.zip`. Both the original and ZIP-extracted
+app pass strict signature checks, isolated-profile launch and sandboxed setup
+checks. The delivered local bundle is ad-hoc signed, not Developer ID signed or
+notarized; local launch does not establish downloaded-archive Gatekeeper trust.
+
 # Customize main-page idea and preview — October 10, 2026
 
 The isolated Customize browser fixture passes with a source project: it sends

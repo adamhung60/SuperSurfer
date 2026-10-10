@@ -4,17 +4,26 @@
 
 The app workshop is a top-level view, separate from research project pages. It
 lists only workspace projects whose repository contains the SuperSurfer source
-layout. Its main-page idea field sends to the selected project's lead conversation;
-draft text stays with the selected project across page rerenders. A running
+layout. Each main-page idea creates a distinct owned worker chat and sends the
+request to that chat, never steering the lead or a previous idea. The source
+project remains internal and accessible through Customize/Open source, but is
+hidden from the Projects tree. Draft text stays with its project across rerenders.
+New chat on software/web projects creates a task-backed conversation without a
+form or inference. Creation uses a stable request receipt, preserving the copied
+Surfboard and existing ownership rules. A failed/uncertain idea send retains its
+draft in the created chat for inspection, rather than replaying it automatically. A running
 configured preview action for that project is embedded on the main page in a
 sandboxed frame, with an explicit refresh. The preview is optional and does not
 install source changes. Source recognition adds
 app-specific agent guidance; it does not grant installation or broader tools.
 The workspace checkout can be remote. The desktop client requests an authenticated,
 bounded snapshot of its saved and unignored source files, then builds that copy
-locally on the Mac. An explicitly chosen local Git checkout is an alternative.
+locally on the Mac. The source remains a real connected checkout; GitHub is not a remote execution
+or installation service.
 The running app does not change when an agent saves source files.
 
+One Install and restart UI action builds and verifies before requesting the
+existing native replacement flow. Build cancellation/failure never calls apply.
 The packaged Mac client asks for native confirmation before running npm from
 the selected source. It verifies the resulting bundle ID,
 package identity/version and strict code signature, and stages it beside the
@@ -25,6 +34,18 @@ moving the candidate or issuing the launch command fails. A quit cancelled by
 an unsaved-file prompt leaves the old app in place. This feature does not
 silently elevate filesystem permissions or replace workspace data. Native Mac
 launch and post-launch health must be verified on a Mac before release.
+After native install confirmation, a one-use upgrade permission binds the exact
+new workspace bundle to the original connection config (host, state, manager and
+port), expiring after 24 hours. The reopened app uses it during its automatic
+reconnect and consumes it only after success. A detached service is stopped only
+when its authenticated PID, port and release match the recorded owner; bootstrap
+waits for its exclusive lock, starts the new service and verifies identity/health.
+Failed startup restores the old release. Timeout never force-kills or starts a
+competing service. Read-only, other-host, stale-bundle and unverified legacy
+processes cannot be stopped by this path. Ordinary reconnect behavior stays
+unchanged. Active turns are interrupted without replay; persisted history and
+the research manager remain separate. Legacy services lacking identity support
+need one explicit manual migration restart.
 
 Settings shows Codex, Cursor and Claude together, with status, official CLI sign-in
 and sign-out. The chosen workspace host owns its account, not the Mac client.
@@ -898,3 +919,14 @@ provider-native rules; permitted workspace edits may run without a callback. CLI
 recognized events; raw stdout/stderr and auth output are not logged. Restart and
 unknown delivery never replay prompts. Exact-turn steering and complete patch
 attribution are not advertised for Cursor/Claude.
+
+## Sent-message reuse
+
+Owned user messages expose Edit and resend and Resend review dialogs. These append
+a new message through the existing validated send/steer path; they do not rewind
+native sessions, undo tools, or delete later history. Original captured attachments
+are resubmitted using their input fields and revalidated by the service. Composer
+drafts are separate; polling leaves the edit dialog intact. In-flight submission
+disables duplicate sends. Read-only, archived/retired, pending approval/question
+and unsupported busy states block sending. Uncertain earlier delivery carries an
+explicit warning before the user resends. Native AutoML history has no reuse controls.
