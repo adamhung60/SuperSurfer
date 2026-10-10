@@ -206,9 +206,9 @@ function openPanel(context,fields){
 }
 async function openPort(context,fields){
   if(!fields||Object.keys(fields).sort().join(',')!=='port,project_id'||!Number.isInteger(fields.port))throw new Error('Choose a project and one localhost development port.');
-  const connection=context.connection;if(!connection)throw new Error('Connect a workspace first.');
+  const root=workspaceContext(context),connection=root.projectOwners?.get(fields.project_id);if(!connection)throw new Error('Reconnect the machine that owns this project before opening its port.');
   const response=await fetch(connection.origin+'/api/action',{method:'POST',headers:{Authorization:'Bearer '+connection.token,'Content-Type':'application/json'},body:JSON.stringify({op:'editor.port.check',params:fields})});const checked=await response.json();if(!response.ok)throw new Error(checked.error||'This project port could not be opened.');
-  const tunnel=await connection.openPort(fields.port);if(context.window.isDestroyed()||context.connection!==connection){await tunnel.close();throw new Error('The workspace changed before this preview opened.');}
+  const tunnel=await connection.openPort(fields.port);if(context.window.isDestroyed()||root.projectOwners?.get(fields.project_id)!==connection){await tunnel.close();throw new Error('The workspace changed before this preview opened.');}
   const preview=new BrowserWindow({width:1040,height:760,minWidth:360,minHeight:260,title:'localhost:'+fields.port+' — SuperSurfer',webPreferences:{partition:'port-preview-'+require('node:crypto').randomUUID(),contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
   const origin=new URL(tunnel.url).origin;preview.webContents.setWindowOpenHandler(({url})=>{openExternal(url);return {action:'deny'};});preview.webContents.on('will-navigate',(event,url)=>{try{if(new URL(url).origin===origin)return;}catch{}event.preventDefault();openExternal(url);});preview.webContents.on('will-attach-webview',event=>event.preventDefault());
   const parentClosed=()=>{if(!preview.isDestroyed())preview.close();};context.window.once('closed',parentClosed);preview.on('closed',()=>{context.window.removeListener('closed',parentClosed);void tunnel.close();});await preview.loadURL(tunnel.url).catch(error=>{preview.close();throw error;});return {opened:true,port:fields.port};

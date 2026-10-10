@@ -18,20 +18,24 @@ function resolveWorkspaceConnection(root,pathAndQuery,body){
   if(runId&&params.before_id&&root.runOwners?.has(params.before_id)&&root.runOwners.get(params.before_id)!==connection)throw new Error('Queue order can only be changed within one workspace.');
   if(!connection){
     const scope=route.searchParams.get('scope')||params.scope||'',match=/^(?:experiment|conversation|project):([^:]+)$/.exec(scope);
-    if(match)connection=root.experimentOwners?.get(match[1])||root.projectOwners?.get(match[1]);
+    connection=root.scopeOwners?.get(scope);
+    if(!connection&&match)connection=root.experimentOwners?.get(match[1])||root.projectOwners?.get(match[1]);
   }
   return {route,connection:connection||root.connection};
 }
 
 function mergeWorkspaceStates(root,connections,states){
   const first=states[0]||{};
+  root.scopeOwners||=new Map();
   for(let index=0;index<states.length;index++){
     const connection=connections[index],data=states[index],label=connection.config.mode==='local'?'This computer':connection.config.target;
+    for(const notice of data.notifications||[])if(notice.scope)root.scopeOwners.set(notice.scope,connection);
+    for(const agent of data.agents||[])if(agent.scope)root.scopeOwners.set(agent.scope,connection);
     for(const project of data.projects||[]){project.workspace_host_id=connection.hostId;project.workspace_host_name=label;root.projectOwners.set(project.id,connection);}
     for(const experiment of data.experiments||[])root.experimentOwners.set(experiment.id,connection);
     for(const run of data.runs||[])root.runOwners.set(run.id,connection);
   }
-  return {...first,projects:states.flatMap(s=>s.projects||[]),experiments:states.flatMap(s=>s.experiments||[]),agents:states.flatMap(s=>s.agents||[]),runs:states.flatMap(s=>s.runs||[]),hosts:states.flatMap(s=>s.hosts||[]),workspace_hosts:connections.map(c=>({id:c.hostId,name:c.config.mode==='local'?'This computer':c.config.target,mode:c.config.mode})),connected:states.some(s=>s.connected)};
+  return {...first,notification_sources:states.flatMap(s=>s.notification_sources||[]),notifications:states.flatMap((s,index)=>(s.notifications||[]).map(row=>({...row,workspace_host_id:connections[index].hostId,workspace_host_name:connections[index].config.mode==='local'?'This computer':connections[index].config.target}))),projects:states.flatMap(s=>s.projects||[]),experiments:states.flatMap(s=>s.experiments||[]),agents:states.flatMap(s=>s.agents||[]),runs:states.flatMap(s=>s.runs||[]),hosts:states.flatMap(s=>s.hosts||[]),workspace_hosts:connections.map(c=>({id:c.hostId,name:c.config.mode==='local'?'This computer':c.config.target,mode:c.config.mode})),connected:states.some(s=>s.connected)};
 }
 
 module.exports={resolveWorkspaceConnection,mergeWorkspaceStates};
