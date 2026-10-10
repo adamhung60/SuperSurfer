@@ -30,6 +30,9 @@ experiments and GPUs together—and shape the workspace around how you actually 
 - **Make room for your process.** Rearrange panels, split views, open separate
   windows and add reusable HTML blocks. Schedule reviews or metric/status
   follow-ups; remote agents and jobs keep running when you close the app.
+- **Customize SuperSurfer.** Work with an agent in a dedicated app workshop,
+  build the desktop client from a local Mac checkout, and install a verified
+  build through an explicit restart.
 
 ## Install
 
@@ -39,6 +42,18 @@ experiments and GPUs together—and shape the workspace around how you actually 
 4. Choose **Codex**, **Cursor** or **Claude** on the first-machine screen and sign in on that computer. This choice becomes the default for new agents. Connect a project, then create its first task. SuperSurfer creates its service and workspace data folders automatically.
 
 **Settings → Accounts** shows all three providers with sign-in and sign-out. You only need one. Existing conversations stay with their original provider; sign-out keeps their history and requires that provider’s turns to be idle.
+
+**Customize SuperSurfer** appears in the left navigation of builds containing
+this feature. Add a SuperSurfer source checkout as a workspace project, select
+it in Customize, and ask its project agent for changes. **Build workspace
+changes** copies the saved project source to the Mac client, installs locked
+npm dependencies and packages a locally signed Mac app. A local Git checkout
+can be chosen as an alternative source. **Install and restart** asks
+for confirmation, saves a backup of the current app beside it, then relaunches
+the replacement. Save open source files first. The app's containing folder must
+be writable by your user; project and workspace data are not replaced. The first
+installation of a build containing Customize must use the ordinary package
+installation path, since an older app has no in-app updater.
 
 Use a page tab’s **⋯** menu or right-click → **Remove page**. Each block’s handle/menu offers **Remove block**, including outside Rearrange. Source files, notes, results and running work are kept. Utility/Markdown tabs can be restored from the page menu; removed blocks can be added again through Rearrange. Drag Results report tabs to reorder; their menu removes a report into the recoverable **Removed** list.
 

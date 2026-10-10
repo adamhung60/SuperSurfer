@@ -1,0 +1,14 @@
+---
+name: supersurfer-app-customization
+description: Change SuperSurfer itself from its source project, verify the app, and prepare a local desktop update.
+---
+
+# Customize SuperSurfer
+
+The Customize SuperSurfer navigation area is the entry point for changing this app. Its source-project selector determines the connected workspace repository and project agent. Check that project's `repo` is the intended fork before editing. The desktop client's local checkout is a separate path and may be on a different machine. Neither source edits nor a remote build change the running client by themselves.
+
+Map a request to the installed source version first. `ui/` owns workspace pages and agent chat; `server/` owns API actions, work items, surfboards and policy; `desktop/` owns Electron windows, local connection, native dialogs and installation. Read `AGENTS.md` and `.agents/contributing.md` for contribution checks and deliverables. Re-read files before patching because this repository is shared with the user and other agents. Preserve unsaved editor buffers and unrelated changes.
+
+For a functionality change, implement the complete UI to service path, verify meaningful behavior, run applicable browser/native checks, and package for the target operating system. Record failed or unavailable checks accurately. Review the source diff with the user before installing. App installation is a separate explicit action in the desktop client; agent tools and surfboards do not grant installation rights.
+
+On macOS, **Build workspace changes** transfers a bounded authenticated snapshot of the selected project's saved, unignored files to a local build copy. A native confirmation precedes running npm from that source. The app installs locked dependencies, runs `npm run package:mac`, verifies the package identity and signature, then stages the built `.app` beside the current packaged app. A local Git checkout can be selected as an alternative. The Install and restart button opens another native confirmation, quits the client, keeps a backup of the old app, swaps the staged bundle, and opens the new one. Save editor buffers before approving. The workspace service and project data are separate from the client bundle. If the client cannot close or the install location is not writable, report the exact error and preserve the candidate. A Mac client cannot install a Linux build. Unsaved editor buffers and ignored files are not included in the workspace snapshot.

@@ -1,5 +1,27 @@
 # SuperSurfer 0.1.40 — accounts, onboarding and research Results
 
+## Customize SuperSurfer feature branch
+
+The app workshop is a top-level view, separate from research project pages. It
+lists only workspace projects whose repository contains the SuperSurfer source
+layout and uses that project's agent conversation. Source recognition adds
+app-specific agent guidance; it does not grant installation or broader tools.
+The workspace checkout can be remote. The desktop client requests an authenticated,
+bounded snapshot of its saved and unignored source files, then builds that copy
+locally on the Mac. An explicitly chosen local Git checkout is an alternative.
+The running app does not change when an agent saves source files.
+
+The packaged Mac client asks for native confirmation before running npm from
+the selected source. It verifies the resulting bundle ID,
+package identity/version and strict code signature, and stages it beside the
+installed app. A native confirmation precedes quit. A detached helper waits for
+the old process to exit, renames the old bundle to a retained backup, installs
+the staged bundle and sends the relaunch command. It restores the backup if
+moving the candidate or issuing the launch command fails. A quit cancelled by
+an unsaved-file prompt leaves the old app in place. This feature does not
+silently elevate filesystem permissions or replace workspace data. Native Mac
+launch and post-launch health must be verified on a Mac before release.
+
 Settings shows Codex, Cursor and Claude together, with status, official CLI sign-in
 and sign-out. The chosen workspace host owns its account, not the Mac client.
 Fresh workspaces ask for an explicit signed-in provider before sending; it persists

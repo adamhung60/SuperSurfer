@@ -9,6 +9,20 @@ import subprocess
 from .surfboards import SurfboardError, catalog, templates, compile_board, configured_limits, validate, with_limits
 from .store import atomic_write
 
+
+def is_supersurfer_source(repo):
+    """Identify a project checkout of this app without trusting its display name."""
+    try:
+        root = Path(repo).expanduser().resolve()
+        manifest = json.loads((root / "package.json").read_text())
+        return (manifest.get("name") == "supersurfer"
+                and (root / ".git").exists()
+                and (root / "desktop" / "main.cjs").is_file()
+                and (root / "server" / "app.py").is_file()
+                and (root / "ui" / "app.js").is_file())
+    except (OSError, ValueError, TypeError):
+        return False
+
 GENERIC_INSTRUCTIONS = """You are a SuperSurfer project collaborator. Complete the user's requested work,
 including implementation, verification and a usable deliverable. Keep pursuing unfinished
 requests across turns; a status question does not cancel them. Use update_task to record
@@ -350,6 +364,9 @@ class SurfboardService:
             if compiled.get("data_sources"):
                 context["instructions"] += "\nRead the supersurfer-wandb-data and supersurfer-experiment-visualizer skills in " + str(Path(__file__).resolve().parents[1] / "agent_skills") + ". Use inspect_board_data to find real individual runs across the connected sharing scope; preserve experiment and method identities."
             context["instructions"] += "\nRead the supersurfer-code-editor skill in " + str(Path(__file__).resolve().parents[1] / "agent_skills") + ". The user may be editing this same repository. Re-read files before patching; preserve concurrent user and other-agent edits. Editor selections are user-supplied context and can be unsaved."
+            project = next((row for row in self.state()["projects"] if row["id"] == info["project_id"]), None)
+            if project and is_supersurfer_source(project.get("repo")):
+                context["instructions"] += "\nThis project's repository is SuperSurfer source. Read the supersurfer-app-customization skill in " + str(Path(__file__).resolve().parents[1] / "agent_skills") + " before changing the app. The Customize SuperSurfer area builds a local Mac checkout and can stage a verified app replacement with an explicit restart. A workspace-host repository may be on a different computer from the desktop app; do not claim source edits are installed until the target app reports the new build."
             if compiled.get("latex"):
                 context["instructions"] += "\nLaTeX blocks: " + json.dumps(compiled["latex"]) + ". Read the supersurfer-writing skill. compile_latex compiles saved source; inspect the returned build until terminal and verify the actual PDF. PDF selections identify the exact build and page; do not invent source line mappings or citations."
         else:

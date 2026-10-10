@@ -41,7 +41,8 @@ from .results import Results
 from .coordination import AgentMessages
 from . import brief, telemetry
 from .surfboards import Surfboards, SurfboardError as APIError, template as board_template
-from .surfboard_service import SurfboardService, ALIASES
+from .surfboard_service import SurfboardService, ALIASES, is_supersurfer_source
+from .app_source import snapshot as app_source_snapshot
 from .board_runtime import BoardRuntime
 from .project_artifacts import ProjectArtifacts, MAX_UPLOAD_BYTES
 from .code_editor import CodeEditor
@@ -252,6 +253,7 @@ class Service(SurfboardService, EditorService, WritingService):
         if self.store.get("local_projects", []):
             state["connected"] = True
         for project in state["projects"]:
+            project["app_source"] = is_supersurfer_source(project.get("repo"))
             project["archived"] = bool(self.store.get("project_archived:"+project["id"],False))
             board = self.boards.get(project["id"])
             project["surfboard"] = {**{key: board["compiled"].get(key) for key in ("workflow", "item_label", "tabs", "views", "layouts", "pages", "available_tiles")}, "name": board["board"]["name"], "version": board["version"]}
@@ -2126,6 +2128,10 @@ class Handler(BaseHTTPRequestHandler):
                     result = {"ok": True, "version": __version__, "state_dir": str(self.server.service.directory), "aml_home": str(self.server.service.aml.home), "read_only": self.server.service.read_only}
                 elif path == "/api/state":
                     result = self.server.service.state()
+                elif path == "/api/app-source":
+                    project = self.server.service.lookup("projects", query.get("project_id", [""])[0])
+                    self.respond(200, app_source_snapshot(project["repo"]), "application/gzip")
+                    return
                 elif path == "/api/editor":
                     result = {"settings": editor_settings.read(self.server.service.store), "workbench": self.server.service.workbench.status()}
                 elif path == "/api/editor/extensions":

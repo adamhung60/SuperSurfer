@@ -1,3 +1,10 @@
+# Customize SuperSurfer feature branch
+
+- [x] Dedicated app workshop, project-scoped agent guidance, local Mac build and staged restart flow.
+- [ ] Verify a native Mac build, bundle replacement and reopened app on an isolated installation.
+- [ ] Add post-launch health acknowledgement and one-click recovery from a retained backup.
+- [x] Transfer saved source from the selected workspace checkout to the Mac build.
+
 # Completed in 0.1.40
 
 - Unified Codex/Cursor/Claude Accounts in Settings with sign-in/out and active-turn guards.

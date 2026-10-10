@@ -7,12 +7,13 @@ const { connect, validateConfig } = require('./connection.cjs');
 const { knownHosts } = require('./hosts.cjs');
 const { openProviderLogin } = require('./provider-login.cjs');
 const themes = require('./themes.cjs');
+const { createCustomize } = require('./customize.cjs');
 const { workspacePreference } = require('./preferences.cjs');
 const { WindowStore, configKey, windowLabel } = require('./windows.cjs');
 const windows = new Map(), panelWindows = new Map();
 const contexts=()=>[...windows.values(),...panelWindows.values()];
 const releaseConnection=(connection)=>{if(connection&&!contexts().some(row=>row.connection===connection))connection.child?.kill();};
-let store, shuttingDown = false;
+let store, customize, shuttingDown = false;
 const setupPath = path.join(__dirname, 'setup.html');
 const setupUrl = pathToFileURL(setupPath).href;
 
@@ -198,6 +199,11 @@ else {
   app.on('second-instance', () => { const context=focused();if (context) focus(context);else if (store) store.restore().forEach(makeWindow); });
   app.whenReady().then(() => {
     store=new WindowStore(app.getPath('userData'));nativeTheme.themeSource=themeSource(loadTheme());
+    customize=createCustomize({app,dialog,getWindow:()=>focused()?.window,quit:()=>app.quit()});
+    ipcMain.handle('customize:status',event=>{ownWindow(event);return customize.status();});
+    ipcMain.handle('customize:source',event=>{ownWindow(event);return customize.chooseSource();});
+    ipcMain.handle('customize:build',(event,projectId)=>{const context=ownWindow(event);return customize.build({connection:context.connection,projectId:projectId??null});});
+    ipcMain.handle('customize:apply',event=>{ownWindow(event);return customize.apply();});
     ipcMain.handle('provider:login',(event,backend)=>{const context=ownWindow(event);if(!context.connection)throw new Error('Connect a workspace first.');return openProviderLogin(context.connection.config,backend);});
     ipcMain.handle('port:open',(event,fields)=>openPort(ownWindow(event),fields));
     ipcMain.handle('panel:open',(event,fields)=>openPanel(ownWindow(event),fields));

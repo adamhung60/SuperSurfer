@@ -43,6 +43,13 @@ const currentBackend=()=>state.chat?.preferences?.backend||state.data?.settings?
 const state = {data:null,view:'workspace',runFilter:'active',queuePriority:false,projectId:null,experimentId:null,tab:'overview',experiment:null,edit:false,scope:null,pinnedAgent:null,chat:null,models:[],account:null,chatVisible:true,chatWidth:390,sidebarWidth:null,sidebarCollapsed:false,projectTreeHeight:null,chatMaximized:false,loading:false,modalKind:null,stateSignature:'',sidebarSignature:'',chatSignature:'',experimentRequest:0};
 const metricsCache = new Map();
 let savedNavigation = null, navigationRestored = false, taskTabs={};
+let customizeStatus=null, customizeError='', customizeLoading=false, customizeActionBusy=false;
+async function loadCustomizeStatus(){
+ if(!window.superSurferDesktop?.getCustomizeStatus||customizeLoading)return;
+ customizeLoading=true;
+ try{customizeStatus=await window.superSurferDesktop.getCustomizeStatus();customizeError='';}catch(error){customizeError=error.message;}
+ finally{customizeLoading=false;if(state.view==='customize')renderMain();}
+}
 const taskTabKey=(projectId,experimentId)=>projectId+'/'+(experimentId||'_project');
 let stateWaiters = [];
 let selectedMetric = null;
@@ -62,7 +69,7 @@ async function readNavigation() {
   if (!savedNavigation || typeof savedNavigation !== 'object' || Array.isArray(savedNavigation)) savedNavigation = {};
   if(panelWindows.detached)savedNavigation={...savedNavigation,...panelWindows.navigation};
   taskTabs=Object.fromEntries(Object.entries(savedNavigation.taskTabs||{}).filter(([key,value])=>/^[A-Za-z0-9_:-]{1,200}\/[A-Za-z0-9_:-]{1,200}$/.test(key)&&typeof value==='string'&&/^(?:page:page_[a-f0-9]+|[A-Za-z0-9_][A-Za-z0-9_-]{0,63})$/.test(value)).slice(-512));
-  state.view = ['workspace', 'compute', 'settings'].includes(savedNavigation.view) ? savedNavigation.view : 'workspace';
+  state.view = ['workspace', 'compute', 'customize', 'settings'].includes(savedNavigation.view) ? savedNavigation.view : 'workspace';
   state.tab = ['_files', '_todos', 'overview', 'runs', 'results', 'compute', 'surfboard', 'artifacts', 'activity', 'editor', 'chat', 'documents', 'preview'].includes(savedNavigation.tab)||/^(?:page:page_[a-f0-9]+|[A-Za-z0-9][A-Za-z0-9_-]{0,63})$/.test(savedNavigation.tab||'') ? savedNavigation.tab : 'overview';
   state.chatVisible = typeof savedNavigation.chatVisible === 'boolean' ? savedNavigation.chatVisible : true;
   state.chatWidth = Number.isFinite(savedNavigation.chatWidth) ? Math.min(760,Math.max(280,savedNavigation.chatWidth)) : 390;
@@ -78,14 +85,15 @@ async function readNavigation() {
 }
 function restoreNavigation(data) {
   if(panelWindows.detached){state.projectId=panelWindows.navigation.projectId;state.experimentId=panelWindows.navigation.experimentId;navigationRestored=true;return;}
+  const eligible=state.view==='customize'?data.projects.filter(p=>p.app_source&&!p.archived):data.projects;
   if (!navigationRestored) {
-    state.projectId = data.projects.some(p => p.id === savedNavigation?.projectId) ? savedNavigation.projectId : (data.projects.find(p=>!p.archived)||data.projects[0])?.id || null;
+    state.projectId = eligible.some(p => p.id === savedNavigation?.projectId) ? savedNavigation.projectId : (eligible.find(p=>!p.archived)||eligible[0])?.id || null;
     state.experimentId = state.view === 'workspace' && data.experiments.some(x => x.id === savedNavigation?.experimentId && x.project_id === state.projectId) ? savedNavigation.experimentId : null;
     if (data.connected || data.projects.length) navigationRestored = true;
     return;
   }
-  if (!data.projects.some(p => p.id === state.projectId)) {
-    state.projectId = (data.projects.find(p=>!p.archived)||data.projects[0])?.id || null;
+  if (!eligible.some(p => p.id === state.projectId)) {
+    state.projectId = (eligible.find(p=>!p.archived)||eligible[0])?.id || null;
     state.experimentId = null;
     state.experiment = null;
   }
@@ -261,12 +269,12 @@ const agentDirectories=new Map(),agentDirectoryVersions=new Map(),agentDirectory
 let scopeSelectionRevision=0,scopeChoices={},surfboardPreviousChatVisible=null;
 try{const saved=JSON.parse(localStorage.getItem('supersurfer-conversation-selection')||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved))scopeChoices=saved;}catch{}
 function surfboardScope(){return 'surfboard:'+(state.experimentId?'experiment:'+state.experimentId:state.projectId);}
-function directoryKey(){if(isSurfboard())return surfboardScope();return state.view==='workspace'?(state.experimentId?'experiment:'+state.experimentId:state.projectId?'project:'+state.projectId:null):null;}
+function directoryKey(){if(isSurfboard())return surfboardScope();return ['workspace','customize'].includes(state.view)?(state.experimentId?'experiment:'+state.experimentId:state.projectId?'project:'+state.projectId:null):null;}
 function currentAgentDirectory(){return isSurfboard()?{agents:scopedAgents()}:agentDirectories.get(directoryKey());}
 function scopedAgents(){
  if(isSurfboard())return [{scope:surfboardScope(),name:'Surfboard configurator',owner:'supersurfer'}];
  const key=directoryKey(),directory=agentDirectories.get(key);if(directory?.agents)return directory.agents;
- if(state.view!=='workspace'||!state.projectId)return [{scope:'manager',name:'Workspace manager',owner:'supersurfer',archived:state.scope==='manager'&&state.chat?.archived}];
+ if(!['workspace','customize'].includes(state.view)||!state.projectId)return [{scope:'manager',name:'Workspace manager',owner:'supersurfer',archived:state.scope==='manager'&&state.chat?.archived}];
  if(state.experimentId)return [{scope:`experiment:${state.experimentId}`,name:itemLabel()+' agent',owner:'supersurfer',experiment_id:state.experimentId}];
  return [{scope:`project:${state.projectId}`,name:`${project()?.name||'Project'} ${leadLabel().toLowerCase()}`,owner:'supersurfer'}];
 }
@@ -319,7 +327,7 @@ function renderAgentChooser(){
  const html=`<div class="agents-list-heading"><button type="button" class="agents-expand-button" data-action="toggle-agent-list" aria-expanded="${agentsExpanded}" aria-label="${agentsExpanded?'Collapse':'Expand'} agents section">${icon(agentsExpanded?'chevronDown':'chevron')}<span>Agents · ${current.length}</span></button><button type="button" class="icon-button" data-action="toggle-right-sidebar" aria-label="Hide right sidebar" title="Hide right sidebar">${icon('panel')}</button>${state.experimentId?`<button id="chat-new-agent" type="button" class="new-agent-button" data-action="new-experiment-agent" aria-label="New experiment agent" title="New agent" ${creating?'disabled':''}${disabled()}>${creating?'<span class="spinner"></span>':icon('plus')}<span>New agent</span></button>`:''}</div><div class="agent-list" ${agentsExpanded?'':'hidden'}>${rows(current)}${previous.length?`<div class="previous-agents-label">Previous agents</div>${rows(previous)}`:''}${archived.length?`<button type="button" class="archived-agents-toggle" data-action="toggle-archived-agents" aria-expanded="${showArchivedAgents}">${icon(showArchivedAgents?'chevronDown':'chevron')}Archived · ${archived.length}</button>${showArchivedAgents?rows(archived):''}`:''}</div>${directory?.error?`<div class="agent-list-error">${e(directory.error)} <button type="button" data-action="refresh-agents">Retry</button></div>`:directoryKey()&&!directory&&!isSurfboard()?'<div class="agent-list-loading">Loading conversations…</div>':''}`;
  if(container.dataset.signature===html)return;
  const scroll=container.querySelector('.agent-list')?.scrollTop||0,focused=container.contains(document.activeElement)?document.activeElement:null,focusedScope=focused?.dataset.conversation,focusedAction=focused?.dataset.action;
- container.dataset.signature=html;container.innerHTML=html;container.setAttribute('aria-label',`${state.experimentId?'Experiment':state.projectId&&state.view==='workspace'?'Project':'Workspace'} agents`);
+ container.dataset.signature=html;container.innerHTML=html;container.setAttribute('aria-label',`${state.experimentId?'Experiment':state.projectId&&['workspace','customize'].includes(state.view)?'Project':'Workspace'} agents`);
  container.querySelector('.agent-list').scrollTop=scroll;
  if(focusedScope||focusedAction){[...container.querySelectorAll('button')].find(button=>focusedScope?button.dataset.conversation===focusedScope:button.dataset.action===focusedAction)?.focus({preventScroll:true});}
 }
@@ -392,7 +400,7 @@ async function archiveProject(id,archived){await action('project.archive',{id,ar
 function syncNavigation(){
  $$('[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===state.view));
  const p=project(),x=experiment();
- $('#breadcrumb').innerHTML=state.view==='compute'?`<span>Workspace</span><span class="divider">/</span><span>Compute</span>`:state.view==='settings'?`<span>Workspace</span><span class="divider">/</span><span>Settings</span>`:p?`<button data-project="${e(p.id)}">${e(p.name)}</button>${x?`<span class="divider">/</span><span>${e(x.name)}</span>`:''}`:'Workspace';
+ $('#breadcrumb').innerHTML=state.view==='compute'?`<span>Workspace</span><span class="divider">/</span><span>Compute</span>`:state.view==='customize'?'<span>Customize SuperSurfer</span>':state.view==='settings'?`<span>Workspace</span><span class="divider">/</span><span>Settings</span>`:p?`<button data-project="${e(p.id)}">${e(p.name)}</button>${x?`<span class="divider">/</span><span>${e(x.name)}</span>`:''}`:'Workspace';
  const count=state.data?queuedRuns().length:0;$('#queue-count').textContent=count||'';
  const sig=JSON.stringify([state.data?.projects,state.data?.experiments,state.projectId,state.experimentId,[...archivedItemProjects],archivedProjectsExpanded]);if(sig!==state.sidebarSignature){state.sidebarSignature=sig;
  const projects=state.data?.projects||[],archivedProjects=projects.filter(p=>p.archived);
@@ -418,7 +426,7 @@ async function refreshState(force=false){if(stateBusy){if(force){await new Promi
  if(!state.edit&&!$('#modal').open)await Promise.all([state.experimentId?fetchExperiment():Promise.resolve(),loadAgentDirectory({initial:!currentAgentDirectory()})]);
  }catch(error){connectionStatus(error);if(!state.data){$('#main').innerHTML=empty('Connect your research workspace',error.message,`<button class="button primary" data-action="${error.status===401?'auth':'refresh'}">${error.status===401?'Enter connection token':'Try again'}</button>`);if(error.status===401&&!$('#modal').open)showAuth();}}finally{stateBusy=false;const waiting=stateWaiters;stateWaiters=[];waiting.forEach(resolve=>resolve());}}
 async function navigate({view='workspace',projectId=state.projectId,experimentId=null,tab}={}){
- persistNavigation();tab=tab??taskTabs[taskTabKey(projectId,experimentId)]??'overview';
+ persistNavigation();tab=tab??(view==='customize'?'overview':taskTabs[taskTabKey(projectId,experimentId)]??'overview');
  panelFocus.close();const wasBoard=!!isSurfboard();stashMessageDraft();scopeSelectionRevision++;if(isSurfboard()&&tab!=='surfboard'&&surfboardPreviousChatVisible!==null){state.chatVisible=surfboardPreviousChatVisible;surfboardPreviousChatVisible=null;applyChatLayout();}if(state.edit){stashEditor();}state.view=view;state.projectId=projectId;state.experimentId=experimentId;state.tab=tab;if(isSurfboard()&&!wasBoard&&!state.pinnedAgent){surfboardPreviousChatVisible=state.chatVisible;state.chatVisible=false;state.chatMaximized=false;applyChatLayout();}state.edit=false;state.experiment=null;state.experimentRequest++;state.scope=state.pinnedAgent?.scope||null;if(!state.pinnedAgent){state.chat=null;state.chatSignature='';}state.sidebarSignature='';persistNavigation();syncNavigation();renderMain();syncAgentChooser();restoreMessageDraft();refreshChat(true);await Promise.all([experimentId?fetchExperiment(true):Promise.resolve(),!experimentId&&tab==='compute'?loadProjectCompute(projectId,{force:true}).catch(()=>{}):Promise.resolve(),loadAgentDirectory({initial:true})]);}
 async function fetchExperiment(force=false){const id=state.experimentId;if(!id)return;const request=++state.experimentRequest;try{const data=await api('experiment?id='+encodeURIComponent(id));if(id!==state.experimentId||request!==state.experimentRequest)return;const firstLoad=!state.experiment;const changed=!state.experiment||data.version!==state.experiment.version||data.status!==state.experiment.status||data.archived!==state.experiment.archived||data.status_detail!==state.experiment.status_detail||JSON.stringify(data.brief)!==JSON.stringify(state.experiment.brief)||JSON.stringify(data.pages)!==JSON.stringify(state.experiment.pages)||JSON.stringify(data.results_review)!==JSON.stringify(state.experiment.results_review)||JSON.stringify(data.view_layout)!==JSON.stringify(state.experiment.view_layout)||data.markdown!==state.experiment.markdown||data.wandb_url!==state.experiment.wandb_url||JSON.stringify(data.wandb_sync)!==JSON.stringify(state.experiment.wandb_sync)||data.review_interval_minutes!==state.experiment.review_interval_minutes||data.work_scope!==state.experiment.work_scope||data.work_state!==state.experiment.work_state||data.work_error!==state.experiment.work_error;let pageCacheChanged=false;for(const page of data.pages||[]){const key=data.id+':'+page.id,cached=markdownPages.get(key);if(cached?.data&&page.version&&cached.data.version!==page.version&&!cached.loading){markdownPages.delete(key);pageCacheChanged=true;}}
  state.experiment=data;if((changed||force||pageCacheChanged)&&!state.edit&&!$('#modal').open)renderMain();if(pageHasTile('results')){loadResultPages(force||firstLoad).then(()=>{if(!chosenResultPage())loadMetrics(force||firstLoad);});}if(pageHasTile('overview'))loadWorkerWakeups(id);}catch(error){if(force)toast(error.message,true);}}
@@ -437,6 +445,13 @@ function renderMain(){
  filesButton.disabled=readOnly()||!fileTile&&activePage()?.tiles.length>=16;filesButton.textContent=fileTile?'Move file browser here':'+ Add file browser';
  if(!isTilePage())clearPageTileDocks();
  if(!state.data)return;
+ if(state.view==='customize'){
+  $('#layout-toggle').hidden=true;surfboardEditor.unmount();repositoryExplorer.unmount();agentChangesTile.unmount();codeEditor.unmount();latexPanel.unmount();
+  const main=$('#main');main.classList.remove('surfboard-main','tiled-page-main','configured-editor-main','results-full-page');delete main.dataset.viewKey;delete main.dataset.tilePageKey;
+  if(main.contains($('#chat-panel')))ensureViewDock().append($('#chat-panel'));
+  const localOpen=main.querySelector('.customize-local')?.open;
+  main.innerHTML=renderCustomize();if(localOpen)main.querySelector('.customize-local')?.setAttribute('open','');dockChat();return;
+ }
  $('#layout-toggle').hidden=state.view!=='workspace'||!state.projectId;
  renderProjectSlots();
  const boardMode=isSurfboard(),boardMain=$('#main');boardMain.classList.toggle('surfboard-main',!!boardMode);
@@ -1075,6 +1090,16 @@ async function configureEditorExtension(extensionId){
  await navigate({view:'workspace',projectId,experimentId:null,tab:'_files'});
 }
 function renderSettings(){const s=state.data.settings;return `<div class="page"><div class="page-eyebrow">${icon('settings')}Your workspace</div><div class="page-heading"><div><h1>Settings</h1><p>Defaults for this workspace. Projects can override them in their Surfboards.</p></div></div><section class="settings-block" id="workspace-accounts"></section>${renderAppearance()}<section class="settings-block" id="editor-settings"></section><form id="settings-form">${renderWorkspacePreferences(s)}<section class="settings-block"><h2>Agent models</h2><p>Backend defaults apply to new conversations. Each existing conversation keeps its backend. Select a model in the conversation; the fields below set Codex model defaults.</p><datalist id="model-options">${state.models.map(m=>`<option value="${e(m.id)}">${e(m.displayName||m.id)}</option>`).join('')}</datalist>${modelRoles.map(role=>`<div class="settings-row"><div><strong>${{manager:'Workspace manager',lead:'Project lead',worker:'Worker'}[role]}</strong><div class="description">${{manager:'Coordinate projects and resources.',lead:'Plan requested work within each project’s Surfboard.',worker:'Implement, check, and report assigned work.'}[role]}</div></div><label class="field"><span>Backend</span><select class="control" name="backend_${role}" aria-label="${role} backend">${Object.entries(backendLabels).map(([id,label])=>`<option value="${id}" ${(s.backends?.[role]||'codex')===id?'selected':''}>${label}</option>`).join('')}</select></label><label class="visually-hidden" for="model-${role}">${role} model</label><input class="control" id="model-${role}" name="model_${role}" list="model-options" placeholder="Codex default" value="${e(s.models?.[role]||'')}"><label class="visually-hidden" for="reasoning-${role}">${role} reasoning</label><select class="control" id="reasoning-${role}" name="reasoning_${role}">${[...new Set([...reasoningValues(state.models.find(m=>m.id===s.models?.[role])||state.models.find(m=>m.isDefault)),s.reasoning?.[role]||'medium'])].map(v=>`<option ${s.reasoning?.[role]===v?'selected':''} value="${v}">${v.charAt(0).toUpperCase()+v.slice(1)}</option>`).join('')}</select></div>`).join('')}</section><section class="settings-block"><h2>Experiment monitoring</h2><p>Checks run status while the workspace computer is on, including when this app is closed. This does not run recurring agent turns or launch experiments.</p><div class="settings-row"><label class="toggle-label"><input type="checkbox" name="monitor_enabled" ${s.monitor_enabled?'checked':''}>Monitor run status</label><label class="field"><span>Check every (minutes)</span><input type="number" name="monitor_interval_minutes" min="1" max="1440" required value="${e(s.monitor_interval_minutes||15)}"></label></div><div class="small muted" id="settings-monitor-status">Last check: ${e(date(state.data.monitoring.last_check))}${state.data.monitoring.next_check?` · Next: ${e(date(state.data.monitoring.next_check))}`:''}</div>${state.data.monitoring.alerts?.length?`<div class="notice">${state.data.monitoring.alerts.slice(-5).map(a=>e(typeof a==='string'?a:a.message||JSON.stringify(a))).join('<br>')}</div>`:''}</section><div class="settings-footer"><button class="button primary" type="submit">Save settings</button></div></form></div>`;}
+function renderCustomize(){
+ const projects=(state.data?.projects||[]).filter(p=>p.app_source&&!p.archived), selected=projects.find(p=>p.id===state.projectId), native=window.superSurferDesktop?.getCustomizeStatus, info=customizeStatus||{};
+ const connected=selected?.repo?`<code>${e(selected.repo)}</code>`:'No source project selected';
+ const options=projects.map(p=>`<option value="${e(p.id)}" ${p.id===state.projectId?'selected':''}>${e(p.name)} · ${e(p.repo||'no repository')}</option>`).join('');
+ return `<div class="page customize-page"><div class="page-eyebrow">${icon('settings')}App workshop</div><div class="page-heading"><div><h1>Customize SuperSurfer</h1><p>Build changes with your project agent, review the source, then install a verified desktop build.</p></div></div>
+ <div class="customize-grid"><section class="settings-block"><h2>1 · Work on the source</h2><p>Choose the workspace project containing your SuperSurfer checkout. The agent conversation on the right uses that project’s repository.</p>${projects.length?`<label class="field"><span>Source project</span><select class="control" id="customize-project">${options}</select></label>`:'<div class="notice">Add your SuperSurfer source checkout as a project first.</div>'}<div class="customize-path">${connected}</div><div class="customize-actions"><button class="button" data-action="customize-open-project" ${selected?'':'disabled'}>Open project files</button><button class="button" data-prompt="Help me customize SuperSurfer. First inspect the current app behavior and source, then propose and implement the change I describe." ${selected?'':'disabled'}>Draft a change with the agent</button></div></section>
+ <section class="settings-block"><h2>2 · Build on this Mac</h2><p>Build the saved source from this workspace directly on your Mac, including agent edits. Dependencies are installed from the lockfile in an isolated source copy, and the resulting app is verified before installation.</p>${native?`<div class="customize-facts"><span>Running app</span><strong>${e(info.version||'Loading…')}${info.installedFingerprint?` · source ${e(info.installedFingerprint)}`:''}</strong><span>Installed at</span><code>${e(info.installed||'Packaged app required')}</code></div><div class="customize-actions"><button class="button primary" data-action="customize-build" ${!selected||!info.installed||customizeActionBusy?'disabled':''}>${customizeActionBusy?'Building…':'Build workspace changes'}</button></div><details class="customize-local"><summary>Build from a local checkout instead</summary><p>Choose a Mac Git checkout if you want to build local source that differs from the connected workspace.</p><div class="customize-path">${e(info.source?.root||'Not selected')}</div><div class="customize-actions"><button class="button" data-action="customize-source" ${customizeActionBusy?'disabled':''}>Choose local checkout</button><button class="button" data-action="customize-build-local" ${!info.source||!info.installed||customizeActionBusy?'disabled':''}>Build local checkout</button></div></details>`:'<div class="notice">Build and restart are available in the macOS desktop app.</div>'}</section>
+ <section class="settings-block"><h2>3 · Install and restart</h2><p>The verified build is copied beside the current app. SuperSurfer closes, keeps the previous app as a backup, installs the new app, and opens it. Workspace data is stored separately.</p>${info.prepared?`<div class="notice">Version ${e(info.prepared.version)}${info.prepared.fingerprint?` · source ${e(info.prepared.fingerprint)}`:''} is ready to install.</div>`:'<div class="muted small">Build and verify a new app first.</div>'}<div class="customize-actions"><button class="button primary" data-action="customize-apply" ${!info.prepared||customizeActionBusy?'disabled':''}>Install and restart</button></div>${info.updateStatus?`<div class="customize-status" role="status">${e(info.updateStatus)}</div>`:''}</section></div>
+ ${customizeError?`<div class="notice error" role="alert">${e(customizeError)}</div>`:''}</div>`;
+}
 function renderAppearance(){
  const themeApi=window.superSurferTheme,selected=themeApi?.preference||'system',themes=themeApi?.themes||[],custom=selected.startsWith('vscode:'),missing=custom&&!themes.some(theme=>theme.id===selected);
  return `<section class="settings-block appearance-block"><h2>Appearance</h2><p>Choose a theme for this app. System follows your device’s appearance.</p><div class="theme-picker" role="group" aria-label="Color theme">${['light','dark','system'].map(theme=>`<button type="button" class="theme-option ${selected===theme?'selected':''}" data-action="theme" data-theme-choice="${theme}" aria-pressed="${selected===theme}"><span class="theme-preview ${theme}" aria-hidden="true"><i></i><b></b><em></em></span><span>${theme.charAt(0).toUpperCase()+theme.slice(1)}</span>${icon('check')}</button>`).join('')}</div><div class="vscode-theme-controls"><label class="field"><span>VS Code color theme</span><select id="vscode-theme" aria-label="VS Code color theme"><option value="" ${!custom?'selected':''}>${themeApi?.loading?'Loading color themes…':'Choose a color theme…'}</option>${missing?`<option value="${e(selected)}" selected>${e(selected)} (unavailable)</option>`:''}${themes.map(theme=>`<option value="${e(theme.id)}" ${selected===theme.id?'selected':''}>${e(theme.name)} · ${theme.type==='light'||theme.type==='hcLight'?'Light':'Dark'}</option>`).join('')}</select><small>${themes.length} available themes${window.superSurferDesktop?.importTheme?' · Includes installed and imported VS Code themes.':'.'}</small></label>${window.superSurferDesktop?.importTheme?`<button type="button" class="button small-button" data-action="import-theme">${icon('plus')}Import theme JSON</button>`:''}</div>${themeApi?.error?`<div class="notice warn">${e(themeApi.error)}</div>`:''}</section>`;
@@ -1515,6 +1540,10 @@ async function handleAction(name,el){switch(name){
  case 'maximize-chat':state.chatVisible=true;state.chatMaximized=!state.chatMaximized;applyChatLayout();dockChat();persistNavigation();break;
  case 'close-modal':closeModal();break;
  case 'add-project':showAddProject();break;
+ case 'customize-open-project':await navigate({projectId:state.projectId,tab:'editor'});break;
+ case 'customize-source':customizeActionBusy=true;renderMain();try{customizeStatus=await window.superSurferDesktop.chooseCustomizeSource();customizeError='';}catch(error){customizeError=error.message;}finally{customizeActionBusy=false;renderMain();}break;
+ case 'customize-build':case 'customize-build-local':customizeActionBusy=true;renderMain();try{customizeStatus=await window.superSurferDesktop.buildCustomize(name==='customize-build'?state.projectId:null);customizeError='';}catch(error){customizeError=error.message;}finally{customizeActionBusy=false;renderMain();}break;
+ case 'customize-apply':customizeActionBusy=true;renderMain();try{const result=await window.superSurferDesktop.applyCustomize();if(result.cancelled)customizeError='';else toast('Restarting SuperSurfer…');}catch(error){customizeError=error.message;}finally{customizeActionBusy=false;renderMain();}break;
  case 'add-experiment':showAddExperiment();break;
  case 'new-experiment-agent':await createExperimentAgent();break;
  case 'resume-experiment-agent':await resumeExperimentAgent();break;
@@ -1564,7 +1593,7 @@ document.addEventListener('click',async event=>{const target=event.target.closes
  if(target.dataset.copyArtifact){await navigator.clipboard.writeText(target.dataset.copyArtifact);toast('Artifact path copied.');return;}
  if(target.dataset.action){event.preventDefault();await handleAction(target.dataset.action,target);return;}
  if(target.dataset.conversation){await selectConversation(target.dataset.conversation);return;}
- if(target.dataset.view){closeModal();await navigate({view:target.dataset.view});if(target.dataset.view==='settings')refreshAccountModels();return;}
+ if(target.dataset.view){closeModal();const source=target.dataset.view==='customize'?(state.data?.projects||[]).find(p=>p.app_source&&!p.archived):null;await navigate({view:target.dataset.view,projectId:target.dataset.view==='customize'?source?.id||null:state.projectId});if(target.dataset.view==='settings')refreshAccountModels();if(target.dataset.view==='customize')void loadCustomizeStatus();return;}
  if(target.dataset.project){closeModal();await navigate({projectId:target.dataset.project});return;}
  if(target.dataset.experiment){const x=state.data.experiments.find(x=>x.id===target.dataset.experiment);if(x){closeModal();await navigate({projectId:x.project_id,experimentId:x.id});}return;}
  if(target.dataset.tab){if(state.edit)stashEditor();state.edit=false;const wasBoard=!!isSurfboard();state.tab=target.dataset.tab;if(isSurfboard()&&!wasBoard&&!state.pinnedAgent){surfboardPreviousChatVisible=state.chatVisible;state.chatVisible=false;state.chatMaximized=false;applyChatLayout();}else if(wasBoard&&!isSurfboard()&&surfboardPreviousChatVisible!==null){state.chatVisible=surfboardPreviousChatVisible;surfboardPreviousChatVisible=null;applyChatLayout();}persistNavigation();syncAgentChooser();renderAgentChooser();refreshChat(true);renderMain();if(pageHasTile('results')){if(state.experimentId)loadResultPages(true).then(()=>chosenResultPage()?liveResults.refresh():loadMetrics(true));else{for(const item of state.data.experiments.filter(x=>x.project_id===state.projectId))resultPages.delete(item.id);loadProjectResults();}}if(pageHasTile('compute')&&!state.experimentId)loadProjectCompute(state.projectId,{force:true}).catch(()=>{});return;}
@@ -1607,6 +1636,7 @@ $('#chat-questions').addEventListener('input',updateQuestionDraft);
 $('#chat-questions').addEventListener('change',updateQuestionDraft);
 $('#chat-questions').addEventListener('submit',answerQuestion);
 $('#chat-form').addEventListener('submit',sendChat);
+document.addEventListener('change',event=>{if(event.target.id==='customize-project'&&state.view==='customize')void navigate({view:'customize',projectId:event.target.value,tab:'overview'});});
 $('#chat-input').addEventListener('input',resizeComposer);
 $('#chat-input').addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendChat();}});
 $('#chat-preferences').addEventListener('change',event=>{if(event.target.id==='chat-backend')saveChatPreferences({backend:event.target.value,model:null,reasoning:null,fast_mode:null,approval_mode:null});if(event.target.id==='chat-model')saveChatPreferences({model:event.target.value||null});if(event.target.id==='chat-reasoning')saveChatPreferences({reasoning:event.target.value||null});if(event.target.id==='chat-approval-mode')saveChatPreferences({approval_mode:event.target.value||null});});
@@ -1625,6 +1655,7 @@ const accountGate=createAccountGate({api,action,readOnly,getBackend:currentBacke
 const workspaceAccounts=createWorkspaceAccounts({api,action,gate:accountGate,readOnly,onError:message=>toast(message,true)});
 await readNavigation();
 await refreshState(true);
+if(state.view==='customize')void loadCustomizeStatus();
 if(panelWindows.detached&&panelWindows.path)await openPageCode({path:panelWindows.path}).catch(error=>toast(error.message,true));
 syncClientTimezone();
 if(!panelWindows.detached||panelWindows.page(activePage())?.tiles.some(tile=>tile.kind==='chat')){startChatPolling();}

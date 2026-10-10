@@ -877,3 +877,23 @@ draft review fixtures: mixed Accept/Reject, overlapping lines, typing during a
 delayed save, repeated Save and ordinary native saving. Account reconnect and
 desktop tabs/Activity/sidebars pass. 699 backend and 31 enabled Node checks were
 rerun locally; no live provider inference was repeated for this integration pass.
+
+# Customize SuperSurfer feature branch — October 10, 2026
+
+The source and UI changes passed `tests/customize.test.cjs` (including a
+cancelled native build confirmation),
+`tests/test_app_customization.py` (including a saved-edit snapshot and excluded
+private state), an isolated bundle build from that transferred snapshot,
+`tests/customize.browser.cjs` (including desktop layout
+inspection), `tests/desktop.test.cjs`,
+`scripts/check-agent-skills.py`, `npm run bundle:remote` and `git diff --check`.
+`npm run package:linux` built `dist/SuperSurfer-0.1.40-linux-x64.tar.gz`; the
+archive contains the Customize UI, native installer module, restart helper and
+agent guidance. The project Surfboard's Project checks action could not run:
+its command argument array is empty, so it produced no passing receipt.
+
+The full `npm test` run reported one existing Codex attachment error and one
+node-onboarding failure because this host lacks
+`python3.12-venv`. The isolated Codex attachment test reproduced the same
+error. Mac packaging and native restart were not run on this Linux host; the
+feature is not installed in the user's current Mac app.
