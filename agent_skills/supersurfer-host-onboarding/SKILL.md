@@ -301,7 +301,6 @@ install one automatically or authorize collecting credentials. Fresh account
 choice persists all three role defaults; compute-only nodes still need no login.
 
 For a project whose repository is on another machine, desktop **Add a project →
-Connect a remote machine…** opens SSH workspace setup in a separate window.
-After connecting, choose that host’s project folder. This is a workspace
+Connect a different machine…** opens SSH setup in the current window and keeps the project draft. Connecting switches the active workspace; choose the new host’s project folder after connection. This is a workspace
 connection, not compute-pool registration or permission to queue a run. Browser
 clients show desktop instructions; the existing window and remote work remain.

@@ -957,3 +957,24 @@ before starting it”; no board check receipt or preview is claimed. Direct proc
 results above are the verification evidence. The focused patch is applied to the
 shared source checkout with unrelated edits preserved; its package and PR use an
 isolated branch from origin/main.
+
+
+## Same-window remote project switching — 2026-10-10
+
+The revised **Connect a different machine…** action now switches to SSH setup in
+the current app window. Remote mode is selected. The project name, path, and
+surfboard selection remain in the native window context and return to Add project
+after a successful connection. Existing project folder browsing, project.add and
+editor.trust operate against the newly connected host's workspace service. Each
+remote host retains its own workspace project list; switching is done from Add
+project again. This is same-window host switching, not a combined project browser
+that operates across multiple servers simultaneously.
+
+The browser regression passed with draft restoration and goal-free submission.
+The native Electron regression passed with one window, Remote SSH defaults,
+draft retrieval, and rejection of IPC from an untrusted page. The screenshot
+`remote-project-dialog.png` shows the revised dialog. `npm run package:mac`
+completed, and `node tests/mac-package.electron.cjs` passed strict signatures
+and isolated launches of both the app bundle and ZIP-extracted app. Installation
+and live restarts were not performed. The board check node still has no configured
+command, so no board receipt is claimed.

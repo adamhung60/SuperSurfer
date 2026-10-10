@@ -115,7 +115,7 @@ function makeWindow(record = store.create(), {addProject=false} = {}) {
   const partition = session.fromPartition('persist:workspace-'+record.id);
   const window = new BrowserWindow({width:1480,height:940,...visibleBounds(record.bounds),minWidth:1000,minHeight:680,title:windowLabel(record)+' — SuperSurfer',backgroundColor:nativeTheme.shouldUseDarkColors?'#1c201c':'#f8f8f6',titleBarStyle:'hiddenInset',trafficLightPosition:{x:18,y:20},show:false,
     webPreferences:{preload:path.join(__dirname,'preload.cjs'),session:partition,contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
-  const context = {window,record,connection:null,attempt:null,status:{phase:'idle',message:''},restoreRequested:false,editing:true,addProject};
+  const context = {window,record,connection:null,attempt:null,status:{phase:'idle',message:''},restoreRequested:false,editing:true,addProject,projectDraft:null};
   windows.set(record.id,context);
   partition.setPermissionRequestHandler((_contents,_permission,callback) => callback(false));
   partition.webRequest.onBeforeSendHeaders((details,callback) => {
@@ -208,9 +208,15 @@ else {
     ipcMain.handle('provider:login',(event,backend)=>{const context=ownWindow(event);if(!context.connection)throw new Error('Connect a workspace first.');return openProviderLogin(context.connection.config,backend);});
     ipcMain.handle('port:open',(event,fields)=>openPort(ownWindow(event),fields));
     ipcMain.handle('panel:open',(event,fields)=>openPanel(ownWindow(event),fields));
-    ipcMain.handle('project:remote',event => { ownWindow(event);makeWindow(store.create(),{addProject:true});return {opened:true}; });
+    ipcMain.handle('project:remote',(event,draft) => {
+      const context=ownWindow(event);
+      if(!draft||typeof draft!=='object'||Array.isArray(draft)||Object.keys(draft).some(key=>!['name','repo','surfboard_template'].includes(key)))throw new Error('Invalid project draft.');
+      context.projectDraft={name:typeof draft.name==='string'?draft.name.slice(0,64):'',repo:typeof draft.repo==='string'?draft.repo.slice(0,4096):'',surfboard_template:['research','software','web','writing'].includes(draft.surfboard_template)?draft.surfboard_template:'research'};
+      context.addProject=true;void showSetup(context);return {opened:true};
+    });
+    ipcMain.handle('project:take-draft',event => {const context=ownWindow(event);const draft=context.projectDraft;context.projectDraft=null;context.addProject=false;return draft;});
     ipcMain.handle('window:new',event => { ownWindow(event);makeWindow();return {opened:true}; });
-    ipcMain.handle('configuration',event => {const context=ownWindow(event,true);return context.record.config || (context.addProject?{mode:'remote'}:{});});
+    ipcMain.handle('configuration',event => {const context=ownWindow(event,true);return context.addProject?{...(context.record.config||{}),mode:'remote'}:context.record.config||{};});
     ipcMain.handle('panel:list',event=>{const parent=ownWindow(event);return [...panelWindows.values()].filter(panel=>panel.parent===parent).map(panel=>({id:panel.window.webContents.id,...panel.fields}));});
     ipcMain.handle('hosts:list',event => { ownWindow(event,true);return knownHosts(); });
     ipcMain.handle('connection:ready',event => {
