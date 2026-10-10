@@ -331,6 +331,13 @@
 .customize-idea,.customize-preview{margin-bottom:16px}
 .customize-idea textarea{display:block;width:100%;min-height:116px;resize:vertical;margin-top:7px;line-height:1.5}
 .customize-idea>.field{display:block}
+.customize-preview-switch{display:flex;align-items:center;gap:10px;margin-top:16px;width:fit-content;cursor:pointer;font-size:13px}
+.customize-preview-switch input{appearance:none;position:relative;flex-shrink:0;width:36px;height:20px;margin:0;border:1px solid var(--strong-line);border-radius:20px;background:var(--muted);cursor:pointer;transition:background .15s}
+.customize-preview-switch input::before{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s}
+.customize-preview-switch input:checked{background:var(--green);border-color:var(--green)}
+.customize-preview-switch input:checked::before{transform:translateX(16px)}
+.customize-preview-switch input:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.customize-preview-switch input,.customize-preview-switch input::before{transition:none}}
 .customize-preview-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .customize-preview-heading h2{margin-bottom:5px}
 .customize-preview .managed-preview{display:block;width:100%;height:480px;min-height:300px;border:1px solid var(--line);border-radius:8px;background:#fff}

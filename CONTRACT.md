@@ -930,3 +930,7 @@ drafts are separate; polling leaves the edit dialog intact. In-flight submission
 disables duplicate sends. Read-only, archived/retired, pending approval/question
 and unsupported busy states block sending. Uncertain earlier delivery carries an
 explicit warning before the user resends. Native AutoML history has no reuse controls.
+
+## Customize page visibility
+
+Customize SuperSurfer has an accessible Show visual preview sliding switch above Send idea, default off. Off omits the preview section and its loading, and adds no preview instruction to a submitted idea. On shows the configured preview and includes its request. The boolean choice is captured at submission before async chat creation; later toggling/navigation cannot change that message. The no-install/restart instruction is independent and always included. The current-window choice survives rendering and navigation; toggling removes or restores preview frames without stopping the process or discarding source-idea/chat drafts. Source location remains visible, with native setup when no source project is linked. Routine restart-success backup paths are suppressed; actionable errors remain visible. Installation retains its explicit native confirmations.

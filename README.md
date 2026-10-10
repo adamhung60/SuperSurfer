@@ -50,7 +50,10 @@ agent chat, so multiple ideas can progress independently. **New chat** also open
 a coding conversation directly, without a feature form. Sent messages offer
 **Edit and resend** and **Resend**; these send a new message with the original
 attachments and preserve earlier messages and replies.
-A configured, running visual preview appears in the main page. **Install and
+The sliding **Show visual preview** switch above **Send idea** defaults off.
+Turn it on to request and display a configured preview; off omits the preview
+request and area. The page keeps the source location and offers local
+checkout setup when no source project is linked. **Install and
 restart** copies saved source to the Mac, installs locked dependencies, packages
 and verifies the app, then requests confirmation before replacing and restarting
 it. Cancellation or a failed build leaves the installed app unchanged. Save open source files first. The app's containing folder must

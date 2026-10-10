@@ -3,7 +3,7 @@
 (()=>{
  const storage=()=>{const values=new Map();return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key),clear:()=>values.clear()};};
  Object.defineProperty(window,'localStorage',{value:storage()});Object.defineProperty(window,'sessionStorage',{value:storage()});
- localStorage.setItem('supersurfer-workspace',JSON.stringify({view:'customize',projectId:'preview-source',experimentId:null,tab:'overview',chatVisible:true,chatWidth:390}));
+ localStorage.setItem('supersurfer-workspace',JSON.stringify({view:'customize',projectId:'preview-source',experimentId:null,tab:'overview',chatVisible:window===window.top,chatWidth:390}));
  localStorage.setItem('supersurfer-agents-expanded','true');
  const project={id:'preview-source',name:'SuperSurfer',repo:'Sample local SuperSurfer checkout',initialized:true,app_source:true,surfboard:{workflow:'software',name:'Software engineering',item_label:'Feature'}};
  const data={connected:true,read_only:false,projects:[project],experiments:[],agents:[],runs:[],hosts:[],queue:{paused:false,run_ids:[]},monitoring:{},settings:{models:{},reasoning:{},approval_mode:'ask'}};
