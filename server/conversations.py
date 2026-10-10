@@ -11,6 +11,7 @@ import time
 import uuid
 from .time_context import validate_timezone
 from . import tasks as task_log, agent_edits
+from .notifications import chat_notifications
 
 class BridgeError(RuntimeError):
     def __init__(self, message, status=503):
@@ -488,6 +489,7 @@ class ConversationBridge:
                 created = chat.get("created_at", min(timestamps, default=0))
                 summaries.append({"scope": chat["scope"], "thread_id": chat.get("thread_id"),
                                   "task_state": task_log.state(chat.get("tasks", [])),
+                                  "notifications": chat_notifications(chat),
                                   "busy": bool(chat.get("busy")), "status": chat.get("status", "idle"),
                                   "agent": {key: chat.get("agent", {}).get(key) for key in ("name", "role", "session_id", "source")},
                                   "created_at": created, "updated_at": max(timestamps, default=created),

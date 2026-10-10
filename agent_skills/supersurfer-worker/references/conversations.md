@@ -169,3 +169,7 @@ must account for all returned attempts, including failed/pending/unavailable
 measurements; new attempt/status/report changes reopen it. Held-only drafts and
 nonresearch workflows do not force this check. Follow
 [Results checkpoint guidance](../../supersurfer-results/references/results-checkpoint.md).
+
+## Notification receipts
+
+The app bell surfaces owned pending approvals/questions, completed deliverables and blocked/required-review tasks, plus published Results reports. Users customize British voice lines in the inbox. Record task completion only after verification: notifications reflect receipts, not independent proof. Notification playback does not grant permission or answer questions. Native-owned histories lack these owned receipts; do not claim their events are monitored.

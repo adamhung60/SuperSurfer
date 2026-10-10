@@ -21,6 +21,7 @@ import time
 import uuid
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 from . import results_review
+from .notifications import workspace_notifications
 
 from .chat_context import attachments as chat_attachments
 
@@ -277,6 +278,16 @@ class Service(SurfboardService, EditorService, WritingService):
                     # changing the scheduler's snapshotted launch configuration.
                     run["config"] = {**run["config"], "wandb_tracking": prepared}
                     run["wandb_url"] = prepared.get("run_url") or run["wandb_url"]
+        source_id = self.store.get("notification_source_id")
+        if not source_id:
+            import uuid
+            source_id = str(uuid.uuid4())
+            self.store.put("notification_source_id", source_id)
+        state["notification_sources"] = [source_id]
+        state["notifications"] = workspace_notifications(chats, self.store, experiments)
+        for notice in state["notifications"]:
+            notice["source_id"] = source_id
+            notice["id"] = source_id + ":" + notice["id"]
         state["settings"] = self.store.settings()
         state["account_setup"] = self.account_setup()
         state["monitoring"] = self.store.get("monitoring", {"last_check": None, "next_check": None, "alerts": []})

@@ -1,3 +1,4 @@
+import {createNotifications} from './notifications.js';
 import {ensureDockLayout,renderDockLayout} from './dock-layout.js';
 import {createPanelWindows} from './panel-windows.js';
 import {createPorts} from './ports.js';
@@ -416,9 +417,10 @@ function connectionStatus(error){
  else if(readOnly()){banner.hidden=false;banner.textContent='Read-only connection · Inspect your real workspace. Agent messages and run actions are disabled.';}
  else {banner.hidden=true;}
 }
+const notifications=createNotifications({escape:e,onError:message=>toast(message,true),open:async row=>{await navigate({projectId:row.project_id,experimentId:row.experiment_id,...(row.destination==='results'?{tab:'results'}:{})});if(row.destination==='results')return;await loadAgentDirectory({initial:false});await selectConversation(row.scope,{persist:false});if(state.scope!==row.scope)throw new Error('This conversation is no longer available.');}});
 let editorDefaultsLoaded=false;
 async function refreshState(force=false){if(stateBusy){if(force){await new Promise(resolve=>stateWaiters.push(resolve));return refreshState(true);}return;}stateBusy=true;try{
- const incoming=normalize(await api('state'));state.data=incoming;
+ const incoming=normalize(await api('state'));state.data=incoming;notifications.observe(incoming);
  if(!editorDefaultsLoaded){try{await editorSettings.load();editorDefaultsLoaded=true;}catch{}}
  restoreNavigation(incoming);
  connectionStatus();syncNavigation();syncAgentChooser();

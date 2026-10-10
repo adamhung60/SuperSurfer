@@ -422,3 +422,5 @@ Ongoing list of requested improvements. Unchecked items are planned, not impleme
 are complete; keep native macOS launch/Gatekeeper as the remaining packaging check.
 Cursor ACP does not expose usage receipts, and listed model IDs may be plan-restricted.
 Native multi-select questions currently direct the agent to scoped ask_user.
+
+- [x] Add a notification bell, actionable inbox and customizable British male voice lines for approvals, questions, completion and review, with per-kind toggles, preview, mute and local persistence.

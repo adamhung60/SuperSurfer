@@ -10,6 +10,8 @@ const themes = require('./themes.cjs');
 const { createCustomize } = require('./customize.cjs');
 const { workspacePreference } = require('./preferences.cjs');
 const { WindowStore, configKey, windowLabel } = require('./windows.cjs');
+const {createVoice}=require('./notification-voice.cjs');
+const notificationVoice=createVoice();
 const windows = new Map(), panelWindows = new Map();
 const contexts=()=>[...windows.values(),...panelWindows.values()];
 const releaseConnection=(connection)=>{if(connection&&!contexts().some(row=>row.connection===connection))connection.child?.kill();};
@@ -223,6 +225,10 @@ else {
       const result=await dialog.showOpenDialog(context.window,{title:'Import VS Code color theme',properties:['openFile'],filters:[{name:'VS Code theme',extensions:['json','jsonc','code-theme']}]});
       return result.canceled?null:themes.importTheme(result.filePaths[0],app.getPath('userData'));
     });
+    ipcMain.handle('notification:get',event=>{ownWindow(event);try{return JSON.parse(fs.readFileSync(path.join(app.getPath('userData'),'notifications.json'),'utf8'));}catch{return {};}});
+    ipcMain.handle('notification:set',(event,value)=>{ownWindow(event);const data=JSON.stringify(value);if(data.length>300000)throw new Error('Notification settings are too large.');const file=path.join(app.getPath('userData'),'notifications.json');let prior={};try{prior=JSON.parse(fs.readFileSync(file,'utf8'));}catch{}const saved={preferences:value.preferences,seen:[...new Set([...(prior.seen||[]),...(value.seen||[])])].slice(-2000),read:[...new Set([...(prior.read||[]),...(value.read||[])])].slice(-2000)};fs.writeFileSync(file+'.tmp',JSON.stringify(saved),{mode:0o600});fs.renameSync(file+'.tmp',file);for(const context of contexts())if(context.window.webContents!==event.sender)context.window.webContents.send('notification-changed',saved);return {saved:true};});
+    ipcMain.handle('notification:speak',(event,fields)=>{ownWindow(event);return notificationVoice.speak(fields);});
+    ipcMain.handle('notification:stop',event=>{ownWindow(event);notificationVoice.stop();return {stopped:true};});
     ipcMain.handle('appearance:get',event => { ownWindow(event);return loadTheme(); });
     ipcMain.handle('appearance:set',(event,value) => {
       ownWindow(event);
@@ -241,6 +247,7 @@ else {
     app.on('activate',() => { if (!windows.size) store.restore().forEach(makeWindow); });
   });
   app.on('before-quit',() => {
+    notificationVoice.stop();
     shuttingDown=true;
     for (const context of windows.values()) { saveWindow(context);context.attempt?.abort();context.connection?.child?.kill(); }
   });
