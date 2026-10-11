@@ -424,3 +424,5 @@ Cursor ACP does not expose usage receipts, and listed model IDs may be plan-rest
 Native multi-select questions currently direct the agent to scoped ask_user.
 
 - [x] Add a notification bell, actionable inbox and customizable British male voice lines for approvals, questions, completion and review, with per-kind toggles, preview, mute and local persistence.
+
+- [x] Integrate detached-service upgrade authorization with manual and automatic Customize installs in main, preserving scoped one-use grants and rollback.

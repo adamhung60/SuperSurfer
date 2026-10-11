@@ -953,3 +953,11 @@ Verification on Apple Silicon macOS:
 No installation or running-app restart occurred. Voice alerts require the open,
 connected Mac app and available Daniel system voice; native AutoML-owned histories
 lack the owned notification receipts.
+
+## Detached update reconnect recurrence — 2026-10-10
+
+Read-only diagnosis found the installed main/customize/bootstrap files lack the native grant consumer, while a pending exact-bundle grant remains and the authenticated live service supplies process attestation. The fix integrates detached upgrading into current main alongside automatic updates and adds native consent recovery for a missing grant. No live installation or service restart was performed.
+
+Focused checks passed: four real isolated-process detached-upgrade tests (success/state retention, mismatched ownership, stop timeout and rollback); 17 installer tests (one systemd skip); eight Customize/grant tests; five native-reconnect orchestration tests (confirmation, cancel, unrelated error, bounded retry and abort). Node suite: 48 passed, five skipped with canonical TMPDIR. Ordinary Python suite: 730 tests, one error, 34 skips; test_timeout_bounded_never_replayed times out during fixture initialization, identically reproduced on clean origin/main. Skill and diff checks passed. Mac arm64 package built in dist; native original/ZIP checks are recorded separately below. Diagnostics: docs/diagnostics/detached-update-reconnect.md is a reviewed redacted local report, not an Activity export (connector unavailable).
+
+Final macOS arm64 package and ZIP both passed strict signatures, isolated-profile setup launches and renderer sandbox checks (native check exit0). The build is locally ad-hoc signed, not notarized.

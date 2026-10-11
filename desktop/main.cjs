@@ -8,6 +8,7 @@ const { knownHosts } = require('./hosts.cjs');
 const { openProviderLogin } = require('./provider-login.cjs');
 const themes = require('./themes.cjs');
 const { createCustomize } = require('./customize.cjs');
+const {connectWorkspace}=require('./workspace-reconnect.cjs');
 const { workspacePreference } = require('./preferences.cjs');
 const { WindowStore, configKey, windowLabel } = require('./windows.cjs');
 const {createVoice}=require('./notification-voice.cjs');
@@ -67,7 +68,7 @@ async function connectWindow(context, raw) {
     const config = validateConfig(raw);
     if(context.connection&&configKey(context.connection.config)!==configKey(config)&&[...panelWindows.values()].some(row=>row.parent===context))throw new Error('Close this workspace’s separate panels before changing its host, or use New Window for the other host.');
     sendStatus(context, 'connecting', `Connecting to ${config.mode === 'local' ? 'this machine' : config.target}…`);
-    next = await connect(config, message => sendStatus(context, 'connecting', message), {signal:attempt.signal});
+    next = await connectWorkspace({connect,customize,dialog,getWindow:()=>context.window,config,onStatus:message=>sendStatus(context,'connecting',message),signal:attempt.signal});
     if (attempt.signal.aborted || context.attempt !== attempt || context.window.isDestroyed()) { next.child?.kill();return {error:'Connection cancelled.'}; }
     const changedHost = context.record.config && configKey(context.record.config) !== configKey(next.config);
     if (changedHost) await context.window.webContents.session.clearStorageData();
