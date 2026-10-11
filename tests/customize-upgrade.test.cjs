@@ -1,0 +1,22 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const {authorizeWorkspaceUpgrade,workspaceUpgrade,clearWorkspaceUpgrade}=require('../desktop/customize-upgrade.cjs');
+test('native install upgrade permission is bound to the exact workspace and installed bundle, then consumed',t=>{
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'ss-install-upgrade-'));t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
+ const file=path.join(directory,'customize.json'),config={mode:'local',remoteRoot:'/fixture/workspace',amlHome:'/fixture/manager',remotePort:8765},bundle=Buffer.from('verified installed bundle');
+ fs.writeFileSync(file,JSON.stringify({source:'/saved/source'}));
+ assert.equal(workspaceUpgrade(file,config,bundle),false);
+ authorizeWorkspaceUpgrade(file,config,bundle);
+ assert.equal(workspaceUpgrade(file,{...config,remoteRoot:'/other'},bundle),false);
+ assert.equal(workspaceUpgrade(file,{...config,amlHome:'/other-manager'},bundle),false);
+ assert.equal(workspaceUpgrade(file,{...config,remotePort:8766},bundle),false);
+ assert.equal(workspaceUpgrade(file,config,Buffer.from('old app or different build')),false);
+ assert.equal(workspaceUpgrade(file,config,bundle),true);
+ assert.equal(workspaceUpgrade(file,config,bundle,true),true);
+ assert.equal(workspaceUpgrade(file,config,bundle),false);
+ assert.equal(JSON.parse(fs.readFileSync(file)).source,'/saved/source');
+ authorizeWorkspaceUpgrade(file,config,bundle);
+ const saved=JSON.parse(fs.readFileSync(file));saved.pendingWorkspaceUpgrade.expires=Date.now()-1;fs.writeFileSync(file,JSON.stringify(saved));
+ assert.equal(workspaceUpgrade(file,config,bundle),false);
+ clearWorkspaceUpgrade(file);assert.equal(JSON.parse(fs.readFileSync(file)).source,'/saved/source');
+});

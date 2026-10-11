@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import shutil
 import select
+import signal
 import subprocess
 import sys
 import tarfile
@@ -51,6 +52,70 @@ def ensure_manager(release, home):
 
 def progress(message):
     print('SUPERSURFER_PROGRESS: ' + json.dumps({'message':message}),file=sys.stderr,flush=True)
+
+
+def upgrade_detached_release(state, previous, release, session_info, healthy, timeout=60):
+    """Restart only the authenticated owner after a native Customize install."""
+    recorded = json.loads((state / 'service.json').read_text())
+    pid = session_info.get('pid')
+    if (type(pid) is not int or pid <= 1 or pid == os.getpid()
+            or recorded.get('pid') != pid or recorded.get('port') != session_info.get('port') or session_info.get('read_only')
+            or session_info.get('release_dir') != str(previous.resolve())
+            or not previous.resolve().is_relative_to((state.parent / 'releases').resolve())):
+        raise RuntimeError('The previous workspace cannot confirm its process identity. Stop that service and reconnect once to finish this update. No process was stopped.')
+    command = [sys.executable, '-m', 'server.app', '--state-dir', str(state),
+               '--port', str(recorded['port']), '--aml-home', session_info['aml_home']]
+    env = {**os.environ, 'PATH': str(Path.home() / '.local/bin') + os.pathsep + os.environ.get('PATH', '')}
+
+    def wait_stopped():
+        deadline = time.monotonic() + timeout
+        with (state / 'service.lock').open('a+') as lock:
+            while True:
+                try:
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError('The previous workspace did not finish stopping. No competing service was started.')
+                    time.sleep(.1)
+
+    def start(directory):
+        with (state / 'service.log').open('ab', buffering=0) as log:
+            child = subprocess.Popen(command, cwd=directory, stdin=subprocess.DEVNULL,
+                                     stdout=log, stderr=log, env=env, start_new_session=True)
+        try:
+            for _ in range(40):
+                if child.poll() is not None:
+                    raise RuntimeError('The workspace service exited during startup.')
+                token = healthy()
+                if token and session_info.get('pid') == child.pid and session_info.get('release_dir') == str(directory.resolve()):
+                    return token
+                time.sleep(.5)
+            raise RuntimeError('The workspace service did not become ready.')
+        except Exception:
+            if child.poll() is None:
+                child.terminate()
+                child.wait(timeout=timeout)
+            raise
+
+    progress('Restarting the connected workspace to load your installed changes…')
+    os.kill(pid, signal.SIGTERM)
+    wait_stopped()
+    if healthy():
+        raise RuntimeError('A workspace is still answering after shutdown. No competing service was started.')
+    try:
+        token = start(release)
+    except Exception as error:
+        try:
+            wait_stopped()
+            if healthy():
+                raise RuntimeError('Another service is answering; no replacement was started.')
+            start(previous)
+        except Exception as restore_error:
+            raise RuntimeError('Workspace update failed and recovery needs attention. Inspect the private service log; no second service was started.') from restore_error
+        raise RuntimeError('Workspace update failed; the previous service was restored. Inspect the private service log and retry.') from error
+    (state / 'release.json').write_text(json.dumps({'path': str(release), 'python': sys.executable, 'command': command, 'mode': 'detached'}))
+    return token
 
 
 def upgrade_systemd_release(root, state, previous, release, healthy):
@@ -202,12 +267,15 @@ def _install(payload):
         previous = Path(installed.get('path', ''))
         if previous.resolve() != release.resolve():
             if installed.get('mode') != 'systemd':
-                raise RuntimeError('A new workspace version was uploaded, but this workspace uses a detached service. Stop that service and reconnect to apply the new version.')
-            upgrade_systemd_release(root, state, previous, release, healthy)
-            installed['path'] = str(release)
-            (state / 'release.json').write_text(json.dumps(installed))
-            session_info.clear()
-            token = healthy()
+                if installed.get('mode') != 'detached' or config.get('customize_upgrade') != hashlib.sha256(payload).hexdigest():
+                    raise RuntimeError('A new workspace version was uploaded, but this workspace uses a detached service. Stop that service and reconnect to apply the new version.')
+                token = upgrade_detached_release(state, previous, release, session_info, healthy)
+            else:
+                upgrade_systemd_release(root, state, previous, release, healthy)
+                installed['path'] = str(release)
+                (state / 'release.json').write_text(json.dumps(installed))
+                session_info.clear()
+                token = healthy()
     if not token:
         progress('Starting the workspace service…')
         command = [sys.executable, '-m', 'server.app', '--state-dir', str(state), '--port', str(port), '--aml-home', str(Path(config.get('amlHome') or '~/.auto-ml').expanduser())]

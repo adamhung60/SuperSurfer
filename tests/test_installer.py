@@ -52,13 +52,14 @@ class InstallerTests(unittest.TestCase):
         if self.manager_error:
             raise self.manager_error
 
-    def install(self, urlopen=None, systemd=False, popen=None, run=None):
+    def install(self, urlopen=None, systemd=False, popen=None, run=None, config_changes=None):
         output = io.StringIO()
         if popen is None:
             def popen(*args, **kwargs):
                 (self.state / "token").write_text(self.token)
                 return Mock(poll=lambda: None)
         config = {"remoteRoot": str(self.root), "remotePort": 8765, "amlHome": str(self.home / ".auto-ml"),"bundle_size":len(self.bundle.getvalue())}
+        config.update(config_changes or {})
         transfer=tempfile.TemporaryFile();transfer.write(self.bundle.getvalue());transfer.seek(0);self.addCleanup(transfer.close)
         with patch.object(sys, "argv", ["bootstrap.py", json.dumps(config)]), patch.object(sys, "stdin", Mock(buffer=transfer)), patch.object(sys, "stdout", output), patch.object(bootstrap.Path, "home", return_value=self.home), patch.object(bootstrap.urllib.request, "urlopen", side_effect=urlopen or self.response), patch.object(bootstrap.shutil, "which", return_value="/usr/bin/systemctl" if systemd else None), patch.object(bootstrap.subprocess, "Popen", side_effect=popen) as spawned, patch.object(bootstrap.subprocess, "run", side_effect=run) as commands, patch.object(bootstrap, "ensure_manager", side_effect=self.ensure_manager):
             bootstrap.main()
@@ -109,6 +110,19 @@ class InstallerTests(unittest.TestCase):
         self.assertNotEqual(release, str(previous))
         self.assertIn("WorkingDirectory=" + release + "\n", unit_file.read_text())
         self.assertEqual([call.args[0][2] for call in commands.call_args_list], ["daemon-reload", "restart"])
+
+    def test_detached_upgrade_requires_native_install_grant_for_exact_bundle(self):
+        previous, _ = self.existing_systemd_release()
+        (self.state / 'release.json').write_text(json.dumps({'path': str(previous), 'mode': 'detached'}))
+        with patch.object(bootstrap, 'upgrade_detached_release', return_value=self.token) as upgrade:
+            for changes in ({}, {'customize_upgrade': True}, {'customize_upgrade': 'other-bundle'}):
+                with self.assertRaisesRegex(RuntimeError, 'detached service'):
+                    self.install(config_changes=changes)
+                upgrade.assert_not_called()
+            result, spawned, _ = self.install(config_changes={'customize_upgrade': hashlib.sha256(self.bundle.getvalue()).hexdigest()})
+            self.assertEqual(result['token'], self.token)
+            self.assertFalse(spawned.called)
+            upgrade.assert_called_once()
 
     def test_failed_systemd_upgrade_restores_previous_service(self):
         previous, unit_file = self.existing_systemd_release()
